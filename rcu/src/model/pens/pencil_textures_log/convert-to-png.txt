@@ -1,0 +1,1 @@
+for f in *.ppm; do convert $f -transparent white -colors 2 -depth 1 PNG8:../pencil_textures_log_png/${f%.ppm}.png; done
