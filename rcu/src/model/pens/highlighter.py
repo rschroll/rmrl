@@ -43,7 +43,7 @@ class HighlighterPen(QPen):
         # Highlighter color is not adjustable like the others (using
         # the color index)
         return
-    
+
     def paint_stroke(self, painter, stroke):
         path = QPainterPath()
         path.moveTo(stroke.segments[0].x, stroke.segments[0].y)

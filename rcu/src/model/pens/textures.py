@@ -71,4 +71,3 @@ class PencilTextures:
         if i >= scale:
             i = scale - 1
         return self.textures_log_paintbrush[i]
-

@@ -38,11 +38,11 @@ class PaintbrushPen(QPen):
         self.setStyle(Qt.SolidLine)
 
         self.ocolor = None
-    
+
     def paint_stroke(self, painter, stroke):
         brush = QBrush()
         brush.setColor(self.color())
-        
+
         for i, segment in enumerate(stroke.segments):
             if i+1 >= len(stroke.segments):
                 # no next segment, last 'to' point
@@ -59,7 +59,7 @@ class PaintbrushPen(QPen):
             delta = (segment.pressure - 1) * maxdelta
             newwidth = modwidth + delta
             self.setWidthF(newwidth)
-            
+
             # # We want textures only in a mid-range, with the high and
             # # low ends going to solid patterns (clamping).
             # press_mod = segment.pressure + 0.4
@@ -117,8 +117,7 @@ class PaintbrushPen(QPen):
             #     brush.setTexture(texture)
             #     brush.setTransform(transform)
             #     self.setBrush(brush)
-                
+
             # painter.setPen(self)
             # painter.drawLine(segment.x, segment.y,
             #                  nextsegment.x, nextsegment.y)
-            

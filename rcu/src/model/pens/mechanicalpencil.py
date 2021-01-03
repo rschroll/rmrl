@@ -36,15 +36,15 @@ class MechanicalPencilPen(QPen):
 
         # Load textures
         self.textures = self.pencil_textures
-    
+
     def paint_stroke(self, painter, stroke):
         brush = QBrush()
-        
+
         for i, segment in enumerate(stroke.segments):
             if i+1 >= len(stroke.segments):
                 # no next segment, last 'to' point
                 continue
-            
+
             nextsegment = stroke.segments[i+1]
 
             # Set the width

@@ -43,9 +43,9 @@ class PencilPen(QPen):
     def paint_stroke(self, painter, stroke):
         brush = QBrush()
         brush.setColor(self.color())
-        
-        
-        
+
+
+
         # if self.vector:
         #     path = QPainterPath()
         #     path.moveTo(stroke.segments[0].x, stroke.segments[0].y)
@@ -55,8 +55,8 @@ class PencilPen(QPen):
         #     painter.setPen(self)
         #     painter.drawPath(path)
         #     return
-        
-        
+
+
         for i, segment in enumerate(stroke.segments):
             if i+1 >= len(stroke.segments):
                 # no next segment, last 'to' point
@@ -73,7 +73,7 @@ class PencilPen(QPen):
             # and average, where n={5,10,20,50,100,200) -- all this does
             # is blur the pressures, and all make it look further than
             # the truth.
-            
+
             # # If the segment is short, use a round cap.
             # distance = point_distance(segment.x, segment.y,
             #                           nextsegment.x, nextsegment.y)
@@ -115,7 +115,7 @@ class PencilPen(QPen):
             if not self.vector:
                 spat_width = prim_width * 1.25
                 self.setWidthF(spat_width)
-                
+
                 texture = self.textures.get_log(segment.pressure * 0.7)
                 brush.setTextureImage(texture)
                 self.setBrush(brush)
