@@ -84,7 +84,7 @@ class PaintbrushPen(QPen):
                 self.setColor(ncolor)
             else:
                 texture = self.textures.get_log_paintbrush(press_mod)
-                brush.setTexture(texture)
+                brush.setTextureImage(texture)
                 brush.setTransform(transform)
                 self.setBrush(brush)
 

@@ -79,7 +79,7 @@ class MechanicalPencilPen(QPen):
                     threshold = n / len(pressure_textures)
                     if segment.pressure >= threshold:
                         texture = tex
-                brush.setTexture(texture)
+                brush.setTextureImage(texture)
                 self.setBrush(brush)
 
             painter.setPen(self)

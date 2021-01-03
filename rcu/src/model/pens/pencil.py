@@ -104,7 +104,7 @@ class PencilPen(QPen):
                 self.setColor(ncolor)
             else:
                 texture = self.textures.get_log(segment.pressure)
-                brush.setTexture(texture)
+                brush.setTextureImage(texture)
                 self.setBrush(brush)
             painter.setPen(self)
             painter.drawLine(QLineF(segment.x, segment.y,
@@ -117,7 +117,7 @@ class PencilPen(QPen):
                 self.setWidthF(spat_width)
                 
                 texture = self.textures.get_log(segment.pressure * 0.7)
-                brush.setTexture(texture)
+                brush.setTextureImage(texture)
                 self.setBrush(brush)
                 painter.setPen(self)
                 painter.drawLine(QLineF(segment.x, segment.y,

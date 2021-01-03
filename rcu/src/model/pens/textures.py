@@ -12,9 +12,9 @@ class PencilTextures:
             name = p.stem
             img = QImage()
             img.load(str(p))
-            bm = QBitmap().fromImage(img)
-            index = int(float(name) * 100)
-            self.textures_linear_pencil.append(bm)
+            #bm = QBitmap().fromImage(img)
+            #index = int(float(name) * 100)
+            self.textures_linear_pencil.append(img)
 
         self.textures_log_pencil = []
         texpath = Path(__file__).parent / Path('pencil_textures_log')
@@ -23,10 +23,10 @@ class PencilTextures:
             name = p.stem
             img = QImage()
             img.load(str(p))
-            bm = QBitmap().fromImage(img)
-            index = int(float(name) * 100)
+            #bm = QBitmap().fromImage(img)
+            #index = int(float(name) * 100)
             # self.textures_log[index] = bm
-            self.textures_log_pencil.append(bm)
+            self.textures_log_pencil.append(img)
 
         self.textures_log_paintbrush = []
         texpath = Path(__file__).parent / Path('paintbrush_textures_log')
@@ -35,11 +35,11 @@ class PencilTextures:
             name = p.stem
             img = QImage()
             img.load(str(p))
-            bm = QBitmap().fromImage(img)
-            index = int(float(name) * 100)
+            #bm = QBitmap().fromImage(img)
+            #index = int(float(name) * 100)
             # self.textures_log[index] = bm
-            self.textures_log_paintbrush.append(bm)
-            
+            self.textures_log_paintbrush.append(img)
+
     def get_linear(self, val):
         scale = len(self.textures_linear_pencil)
         i = int(val * scale)

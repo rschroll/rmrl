@@ -24,10 +24,8 @@ import tempfile
 from datetime import datetime
 import tarfile
 from pathlib import Path
-from model.template import Template
 import uuid
 import json
-from model import lines
 import gc
 import shutil
 import time
@@ -35,8 +33,8 @@ import os
 import re
 
 #from PySide2.QtWidgets import QGraphicsScene
-from PySide2.QtGui import QPainter, QImage, QPen, QPixmap, \
-    QPageSize, QColor, QBrush, QPainterPath
+from PySide2.QtGui import QPainter, QImage, QColor#, QPen, QPixmap, \
+    #QPageSize, QColor, QBrush, QPainterPath
 from PySide2.QtCore import Qt, QByteArray, QIODevice, QBuffer, QSizeF, \
     QSettings
 from PySide2.QtPrintSupport import QPrinter
@@ -45,6 +43,8 @@ from pdfrw import PdfReader, PdfWriter, PageMerge, PdfDict, PdfArray, PdfName, \
     IndirectPdfDict, uncompress, compress
 
 import svgtools
+#from model.template import Template -- disable template for now....
+from model import lines
 
 def rmdir(path):
     if path.is_file() and path.exists():
@@ -59,9 +59,21 @@ def rmdir(path):
     except:
         pass
 
+# From rcu.py, with comment
+# Todo: this should be based on the specific RM model
+DISPLAY = {
+            'screenwidth': 1404,
+            'screenheight': 1872,
+            'realwidth': 1408,
+            'dpi': 226
+            }
 
-def save_pdf(self, filepath, vector=True, prog_cb=lambda x: (),
-                abort_func=lambda: False):
+def save_pdf(filepath,  # Output?
+             source_dir,  # Added - directory with all extracted files
+             uuid,  # Added
+             vector=True,
+             prog_cb=lambda x: (),
+             abort_func=lambda: False):
     # Exports the self as a PDF document to disk
 
     # prog_cb should emit between 0-100 (percent complete).
@@ -93,7 +105,7 @@ def save_pdf(self, filepath, vector=True, prog_cb=lambda x: (),
     # all the operations local (at least, for now).
 
     # Extract the archive to disk in some temporary directory
-    th, tmp = tempfile.mkstemp()
+    '''th, tmp = tempfile.mkstemp()
     os.close(th)
     tmparchive = Path(tmp)
     cleanup_stuff.add(tmparchive)
@@ -111,29 +123,32 @@ def save_pdf(self, filepath, vector=True, prog_cb=lambda x: (),
         tar.extractall(path=tmpdir)
         tar.close()
     tmparchive.unlink()
-    cleanup_stuff.discard(tmparchive)
+    cleanup_stuff.discard(tmparchive)'''
+
+    tmpdir = source_dir
 
     # If this is using a base PDF, the percentage is calculated
     # differently.
-    pdfpath = Path(tmpdir / Path(self.uuid + '.pdf'))
+    pdfpath = Path(tmpdir / Path(uuid + '.pdf'))
     uses_base_pdf = pdfpath.exists()
 
     # Document metadata should already be loaded (from device)
     # ...
 
     # Generate page information
-    contentpath = Path(tmpdir / Path(self.uuid + '.content'))
+    contentpath = Path(tmpdir / Path(uuid + '.content'))
+    contentdict = {}
     if contentpath.exists():
         with open(contentpath, 'r') as f:
-            self.contentdict = json.load(f)
+            contentdict = json.load(f)
             f.close()
     # If a PDF file was uploaded, but never opened, there may not be
     # a .content file. So, just load a barebones one with a 'pages'
     # key of zero length, so it doesn't break the rest of the
     # process. This is here, instead of in __init__, because it is
     # more explainable/straightforward here.
-    if not 'pages' in self.contentdict:
-        self.contentdict['pages'] = []
+    if not 'pages' in contentdict:
+        contentdict['pages'] = []
 
     # Render each page as a pdf
     th, tmp = tempfile.mkstemp()
@@ -141,9 +156,9 @@ def save_pdf(self, filepath, vector=True, prog_cb=lambda x: (),
     tmprmpdf = Path(tmp)
     cleanup_stuff.add(tmprmpdf)
     pdf = QPrinter()
-    res = self.model.display['dpi']
-    width = self.model.display['screenwidth']
-    height = self.model.display['screenheight']
+    res = DISPLAY['dpi']
+    width = DISPLAY['screenwidth']
+    height = DISPLAY['screenheight']
     # Qt docs say 1 pt is always 1/72 inch
     # Multiply ptperpx by pixels to convert to PDF coords
     ptperpx = 72 / res
@@ -161,21 +176,21 @@ def save_pdf(self, filepath, vector=True, prog_cb=lambda x: (),
     changed_pages = []
     painter = QPainter(pdf)
     annotations = []
-    for i in range(0, len(self.contentdict['pages'])):
+    for i in range(0, len(contentdict['pages'])):
         if abort_func():
             painter.end()
             cleanup()
             return
 
-        page = DocumentPage(self, i, tmpdir, self.model.display,
+        page = DocumentPage(contentdict, uuid, i, tmpdir,
                             pencil_textures=pencil_textures)
         if page.rmpath.exists():
             changed_pages.append(i)
         page.render_to_painter(painter, vector)
         annotations.append(page.get_grouped_annotations())
-        if i < len(self.contentdict['pages'])-1:
+        if i < len(contentdict['pages'])-1:
             pdf.newPage()
-        progpct = (i + 1) / len(self.contentdict['pages']) * 25 + 50
+        progpct = (i + 1) / len(contentdict['pages']) * 25 + 50
         prog_cb(progpct)
     painter.end()
 
@@ -230,8 +245,8 @@ def save_pdf(self, filepath, vector=True, prog_cb=lambda x: (),
             rmpage = rmpdfr.pages[i]
 
             # Apply OCGs
-            apply_ocg = bool(int(QSettings().value(
-                'pane/notebooks/export_pdf_ocg')))
+            apply_ocg = False #TODO configurable? bool(int(QSettings().value(
+                #'pane/notebooks/export_pdf_ocg')))
             if apply_ocg:
                 ocgpage = IndirectPdfDict(
                     Type=PdfName('OCG'),
@@ -403,8 +418,8 @@ def save_pdf(self, filepath, vector=True, prog_cb=lambda x: (),
                         log.error('could not associate XObject with layer: (i, l) ({}, {})'.format(i, l))
                         log.error(str(annotations))
                         log.error('document: {} ()').format(
-                            self.uuid,
-                            self.visible_name)
+                            uuid,
+                            'self.visible_name')
                         continue
                     layername = layer[0]
                     ocg = IndirectPdfDict(
@@ -424,8 +439,8 @@ def save_pdf(self, filepath, vector=True, prog_cb=lambda x: (),
                         except:
                             log.error('could not associate layerid with layer: (i, l, layerid) ({}, {}, {})'.format(i, l, layerid))
                             log.error('document: {} ()').format(
-                                self.uuid,
-                                self.visible_name)
+                                uuid,
+                                'self.visible_name')
                             log.error(str(annotations))
                             continue
                         layername = layer[0]
@@ -451,7 +466,7 @@ def save_pdf(self, filepath, vector=True, prog_cb=lambda x: (),
                 for a in layerannots:
                     # PDF origin is in bottom-left, so invert all
                     # y-coordinates.
-                    author = self.model.device_info['rcuname']
+                    author = 'RCU' #self.model.device_info['rcuname']
                     pdf_a = PdfDict(Type=PdfName('Annot'),
                                     Rect=PdfArray([
                                         (a[1] * ptperpx),
@@ -638,25 +653,31 @@ class DocumentPage:
     # A single page in a document
     # From local disk!! When making agnostic later, only keep the
     # document and pagenum args.
-    def __init__(self, document, pagenum, archivepath, displaydict, \
+    def __init__(self,
+                 #document,
+                 doc_contentdict,  # Added
+                 doc_uuid,  # Added
+                 pagenum,
+                 archivepath,
+                 #displaydict,
                  pencil_textures=None):
         # Page 0 is the first page!
-        self.document = document
+        #self.document = document
         self.num = pagenum
-        self.display = displaydict  # Carried from model
+        #self.display = displaydict  # Carried from model, but not used?
         self.pencil_textures = pencil_textures
 
         # get page id
-        self.uuid = self.document.contentdict['pages'][pagenum]
+        self.uuid = str(pagenum) #??? doc_contentdict['pages'][pagenum]
 
         self.rmpath = Path(
             archivepath / \
-            Path(self.document.uuid) / Path(self.uuid + '.rm'))
+            Path(doc_uuid) / Path(self.uuid + '.rm'))
 
         # Try to load page metadata
         self.metadict = None
         self.metafilepath = Path(
-            archivepath / Path(self.document.uuid) / \
+            archivepath / Path(doc_uuid) / \
             Path(self.uuid + '-metadata.json'))
         if self.metafilepath.exists():
             with open(self.metafilepath, 'r') as f:
@@ -667,7 +688,7 @@ class DocumentPage:
         self.template = None
         tmpnamearray = []
         pagedatapath = Path(
-            archivepath / Path(self.document.uuid + '.pagedata'))
+            archivepath / Path(doc_uuid + '.pagedata'))
         if pagedatapath.exists():
             f = open(pagedatapath, 'r')
             lines = f.read()
@@ -675,7 +696,7 @@ class DocumentPage:
                 tmpnamearray.append(line)
             f.close()
 
-        if len(tmpnamearray):
+        '''if len(tmpnamearray):
             # I have encountered an issue with some PDF files, where the
             # rM won't save the page template for later pages. In this
             # case, just take the last-available page template, which
@@ -687,7 +708,7 @@ class DocumentPage:
                     archivepath / Path(tmpname + '.rmt'))
             if tmparchivepath.exists():
                 self.template = Template(
-                    self.document.model).from_archive(tmparchivepath)
+                    self.document.model).from_archive(tmparchivepath)'''
 
         # Load layers
         self.layers = []
@@ -772,9 +793,12 @@ class DocumentPageLayer:
         self.pencil_textures = pencil_textures
 
         self.colors = [
-            QSettings().value('pane/notebooks/export_pdf_blackink'),
-            QSettings().value('pane/notebooks/export_pdf_grayink'),
-            QSettings().value('pane/notebooks/export_pdf_whiteink')
+            #QSettings().value('pane/notebooks/export_pdf_blackink'),
+            #QSettings().value('pane/notebooks/export_pdf_grayink'),
+            #QSettings().value('pane/notebooks/export_pdf_whiteink')
+            QColor(0, 0, 0),
+            QColor(128, 128, 128),
+            QColor(255, 255, 255)
         ]
 
         # Set this from the calling func
@@ -886,7 +910,7 @@ class DocumentPageLayer:
             qpen.paint_stroke(painter, stroke)
 
     def render_to_painter(self, painter, vector):
-        if vector:
+        if vector: # Turn this on with vector otherwise off to get hybrid
             self.paint_strokes(painter, vector=vector)
             return
 
@@ -897,13 +921,13 @@ class DocumentPageLayer:
         # cleaned up by the python garbage collector.
 
         image_ref = QByteArray()
-        devpx = self.page.display['screenwidth'] \
-            * self.page.display['screenheight']
+        devpx = DISPLAY['screenwidth'] \
+            * DISPLAY['screenheight']
         bytepp = 4  # ARGB32
         image_ref.fill('\0', devpx * bytepp)
-        qimage = QImage(image_ref,
-                        self.page.display['screenwidth'],
-                        self.page.display['screenheight'],
+        qimage = QImage(b'\0' * devpx * bytepp,
+                        DISPLAY['screenwidth'],
+                        DISPLAY['screenheight'],
                         QImage.Format_ARGB32)
 
         # This is a fix for a bug that still exists in PySide2
@@ -923,3 +947,11 @@ class DocumentPageLayer:
         del qimage
         del image_ref
         gc.collect()
+
+
+from PySide2 import QtCore
+
+if __name__ == '__main__':
+    import sys
+    app = QtCore.QCoreApplication(sys.argv)
+    save_pdf('testing/output-vector.pdf', 'testing/samples', 'cb736ad2-b869-4253-979a-dbc5c01a9000', True, lambda x: print(x))

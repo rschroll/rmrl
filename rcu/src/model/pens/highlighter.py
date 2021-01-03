@@ -28,15 +28,15 @@ class HighlighterPen(QPen):
         super(type(self), self).__init__(*args, **kwargs)
 
         self.layer = kwargs.get('layer')
-        self.annotate = bool(int(QSettings().value(
-            'pane/notebooks/export_pdf_annotate')))
-        
+        self.annotate = False #TODO bool(int(QSettings().value(
+        #    'pane/notebooks/export_pdf_annotate')))
+
         self.setCapStyle(Qt.FlatCap)
         self.setJoinStyle(Qt.BevelJoin)
         self.setStyle(Qt.SolidLine)
 
         # Pull the color from the settings
-        color = QSettings().value('pane/notebooks/export_pdf_highlightink')
+        color = QColor(255, 233, 74, 100) #QSettings().value('pane/notebooks/export_pdf_highlightink')
         super(type(self), self).setColor(color)
 
     def setColor(self, color):
