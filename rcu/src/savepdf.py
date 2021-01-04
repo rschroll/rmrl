@@ -38,12 +38,11 @@ from PySide2.QtGui import QPainter, QImage, QColor#, QPen, QPixmap, \
 from PySide2.QtCore import Qt, QByteArray, QIODevice, QBuffer, QSizeF, \
     QSettings
 from PySide2.QtPrintSupport import QPrinter
+from PySide2.QtSvg import QSvgRenderer
 
 from pdfrw import PdfReader, PdfWriter, PageMerge, PdfDict, PdfArray, PdfName, \
     IndirectPdfDict, uncompress, compress
 
-import svgtools
-#from model.template import Template -- disable template for now....
 from model import lines
 
 def rmdir(path):
@@ -72,6 +71,9 @@ DISPLAY = {
 PTPERPX = 72 / DISPLAY['dpi']
 PDFHEIGHT = DISPLAY['screenheight'] * PTPERPX
 PDFWIDTH = DISPLAY['screenwidth'] * PTPERPX
+
+# TODO: parameterize
+TEMPLATE_PATH = Path('/home/pi/source-rcu-r2020-003/rcu/src/templates')
 
 
 def save_pdf(filepath,  # Output?
@@ -682,19 +684,15 @@ class DocumentPage:
                 tmpnamearray.append(line)
             f.close()
 
-        '''if len(tmpnamearray):
+        if tmpnamearray:
             # I have encountered an issue with some PDF files, where the
             # rM won't save the page template for later pages. In this
             # case, just take the last-available page template, which
             # is usually 'Blank'.
-            tmpname = tmpnamearray[-1]
-            if self.num < len(tmpnamearray):
-                tmpname = tmpnamearray[self.num]
-            tmparchivepath = Path(
-                    archivepath / Path(tmpname + '.rmt'))
-            if tmparchivepath.exists():
-                self.template = Template(
-                    self.document.model).from_archive(tmparchivepath)'''
+            tmpname = tmpnamearray[max(self.num, len(tmpnamearray) - 1)]
+            tmparchivepath = TEMPLATE_PATH / f'{tmpname}.svg'
+            if tmpname != 'Blank' and tmparchivepath.exists():
+                self.template = open(tmparchivepath, 'rb').read()
 
         # Load layers
         self.layers = []
@@ -743,8 +741,9 @@ class DocumentPage:
 
     def render_to_painter(self, painter, vector):
         # Render template layer
-        if self.template and self.template.name != 'Blank':
-            svgtools.template_to_painter(painter, self.template)
+        if self.template:
+            renderer = QSvgRenderer(self.template)
+            renderer.render(painter)
             # Bitmaps are rendered into the PDF as XObjects, which are
             # easy to pick out for layers. Vectors will render
             # everything inline, and so we need to add a 'magic point'
@@ -756,7 +755,7 @@ class DocumentPage:
                 painter.drawPoint(800, 85)
 
         # Render user layers
-        for i, layer in enumerate(self.layers):
+        for layer in self.layers:
             # Bitmaps are rendered into the PDF as XObjects, which are
             # easy to pick out for layers. Vectors will render
             # everything inline, and so we need to add a 'magic point'
