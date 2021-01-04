@@ -427,7 +427,7 @@ def do_apply_ocg(basepage, rmpage, i, uses_base_pdf, ocgprop, annotations):
             log.error('could not associate XObject with layer: (i, l) ({}, {})'.format(i, l))
             log.error(str(annotations))
             log.error('document: {} ()').format(
-                uuid,
+                'uuid',
                 'self.visible_name')
             continue
         layername = layer[0]
@@ -448,7 +448,7 @@ def do_apply_ocg(basepage, rmpage, i, uses_base_pdf, ocgprop, annotations):
             except:
                 log.error('could not associate layerid with layer: (i, l, layerid) ({}, {}, {})'.format(i, l, layerid))
                 log.error('document: {} ()').format(
-                    uuid,
+                    'uuid',
                     'self.visible_name')
                 log.error(str(annotations))
                 continue
