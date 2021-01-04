@@ -743,8 +743,7 @@ class DocumentPage:
             # everything inline, and so we need to add a 'magic point'
             # to mark the end of the template layer.
             if vector:
-                pen = GenericPen(vector=vector)
-                pen.setColor(Qt.transparent)
+                pen = GenericPen(color=Qt.transparent, vector=vector)
                 painter.setPen(pen)
                 painter.drawPoint(800, 85)
 
@@ -755,8 +754,7 @@ class DocumentPage:
             # everything inline, and so we need to add a 'magic point'
             # to mark the beginning of layers.
             if vector:
-                pen = GenericPen(vector=vector)
-                pen.setColor(Qt.transparent)
+                pen = GenericPen(color=Qt.transparent, vector=vector)
                 painter.setPen(pen)
                 painter.drawPoint(420, 69)
             layer.render_to_painter(painter, vector)
@@ -839,50 +837,17 @@ class DocumentPageLayer:
         return (self.name, annot_rects)
 
     def paint_strokes(self, painter, vector):
-        # These pen codes probably refer to different versions through
-        # various system software updates. We'll just render them all
-        # the same (across all versions).
-        pen_lookup = [
-            PaintbrushPen,       # Brush
-            PencilPen,           # Pencil
-            BallpointPen,        # Ballpoint
-            MarkerPen,           # Marker
-            FinelinerPen,        # Fineliner
-            HighlighterPen,      # Highlighter
-            EraserPen,           # Eraser
-            MechanicalPencilPen, # Mechanical Pencil
-            EraseAreaPen,        # Erase Area
-            None,                # unknown
-            None,                # unknown
-            None,                # unknown
-            PaintbrushPen,       # Brush
-            MechanicalPencilPen, # Mechanical Pencil
-            PencilPen,           # Pencil
-            BallpointPen,        # Ballpoint
-            MarkerPen,           # Marker
-            FinelinerPen,        # Fineliner
-            HighlighterPen,      # Highlighter
-            EraserPen,           # Eraser
-            None,                # unknown
-            CalligraphyPen       # Calligraphy
-        ]
-
         for stroke in self.strokes:
             pen, color, unk1, width, unk2, segments = stroke
 
-            qpen = None
-
-            try:
-                penclass = pen_lookup[pen]
-                assert penclass != None
-            except:
+            penclass = PEN_MAPPING.get(pen, GenericPen)
+            if penclass is GenericPen:
                 log.error("Unknown pen code %d" % pen)
-                penclass = GenericPen
 
             qpen = penclass(pencil_textures=self.pencil_textures,
                             vector=vector,
-                            layer=self)
-            qpen.setColor(self.colors[color])
+                            layer=self,
+                            color=self.colors[color])
 
             # Do the needful
             qpen.paint_stroke(painter, stroke)

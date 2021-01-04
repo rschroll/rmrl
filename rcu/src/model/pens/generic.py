@@ -23,11 +23,12 @@ from PySide2.QtCore import Qt, QLineF
 from PySide2.QtGui import QPen
 
 class GenericPen(QPen):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, color, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setCapStyle(Qt.RoundCap)
         self.setJoinStyle(Qt.MiterJoin)
         self.setStyle(Qt.SolidLine)
+        self.setColor(color)
 
     def paint_stroke(self, painter, stroke):
         for i, segment in enumerate(stroke.segments):

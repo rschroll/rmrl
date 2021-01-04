@@ -9,3 +9,31 @@ from .highlighter import HighlighterPen
 from .eraser import EraserPen
 from .erasearea import EraseAreaPen
 from .calligraphy import CalligraphyPen
+
+# These pen codes probably refer to different versions through
+# various system software updates. We'll just render them all
+# the same (across all versions).
+PEN_MAPPING = dict(enumerate([
+    PaintbrushPen,       # Brush
+    PencilPen,           # Pencil
+    BallpointPen,        # Ballpoint
+    MarkerPen,           # Marker
+    FinelinerPen,        # Fineliner
+    HighlighterPen,      # Highlighter
+    EraserPen,           # Eraser
+    MechanicalPencilPen, # Mechanical Pencil
+    EraseAreaPen,        # Erase Area
+    None,                # unknown
+    None,                # unknown
+    None,                # unknown
+    PaintbrushPen,       # Brush
+    MechanicalPencilPen, # Mechanical Pencil
+    PencilPen,           # Pencil
+    BallpointPen,        # Ballpoint
+    MarkerPen,           # Marker
+    FinelinerPen,        # Fineliner
+    HighlighterPen,      # Highlighter
+    EraserPen,           # Eraser
+    None,                # unknown
+    CalligraphyPen       # Calligraphy
+]))

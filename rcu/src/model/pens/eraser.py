@@ -24,13 +24,12 @@ from PySide2.QtGui import QPainter
 from .generic import GenericPen
 
 class EraserPen(GenericPen):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        super().setColor(Qt.transparent)
+    def __init__(self, color, *args, **kwargs):
+        super().__init__(Qt.transparent, *args, **kwargs)
 
     def setColor(self, color):
         # do nothing, keep transparent
-        return
+        super().setColor(Qt.transparent)
 
     def paint_stroke(self, painter, stroke):
         for i, segment in enumerate(stroke.segments):
