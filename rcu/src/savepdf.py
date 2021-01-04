@@ -174,7 +174,7 @@ def save_pdf(filepath,  # Output?
     if uses_base_pdf and not changed_pages:
         # Since there is no stroke data, verbatim copy the PDF.
         # pdfpath.rename(filepath)
-        shutil.move(pdfpath, filepath)
+        shutil.copy(pdfpath, filepath)
         prog_cb(100)
         cleanup()
 
