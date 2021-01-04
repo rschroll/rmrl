@@ -1,5 +1,4 @@
-from PySide2.QtCore import Qt
-from PySide2.QtGui import QPen, QBrush, QImage, QBitmap
+from PySide2.QtGui import QImage
 from pathlib import Path
 
 class PencilTextures:
@@ -12,8 +11,6 @@ class PencilTextures:
             name = p.stem
             img = QImage()
             img.load(str(p))
-            #bm = QBitmap().fromImage(img)
-            #index = int(float(name) * 100)
             self.textures_linear_pencil.append(img)
 
         self.textures_log_pencil = []
@@ -23,9 +20,6 @@ class PencilTextures:
             name = p.stem
             img = QImage()
             img.load(str(p))
-            #bm = QBitmap().fromImage(img)
-            #index = int(float(name) * 100)
-            # self.textures_log[index] = bm
             self.textures_log_pencil.append(img)
 
         self.textures_log_paintbrush = []
@@ -35,9 +29,6 @@ class PencilTextures:
             name = p.stem
             img = QImage()
             img.load(str(p))
-            #bm = QBitmap().fromImage(img)
-            #index = int(float(name) * 100)
-            # self.textures_log[index] = bm
             self.textures_log_paintbrush.append(img)
 
     def get_linear(self, val):

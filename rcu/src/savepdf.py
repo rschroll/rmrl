@@ -21,22 +21,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import log
 import tempfile
-from datetime import datetime
-import tarfile
 from pathlib import Path
-import uuid
 import json
 import gc
 import shutil
-import time
 import os
 import re
 
-#from PySide2.QtWidgets import QGraphicsScene
-from PySide2.QtGui import QPainter, QImage, QColor#, QPen, QPixmap, \
-    #QPageSize, QColor, QBrush, QPainterPath
-from PySide2.QtCore import Qt, QByteArray, QIODevice, QBuffer, QSizeF, \
-    QSettings
+from PySide2.QtGui import QPainter, QImage, QColor
+from PySide2.QtCore import Qt, QSizeF, QCoreApplication
 from PySide2.QtPrintSupport import QPrinter
 from PySide2.QtSvg import QSvgRenderer
 
@@ -44,6 +37,8 @@ from pdfrw import PdfReader, PdfWriter, PageMerge, PdfDict, PdfArray, PdfName, \
     IndirectPdfDict, uncompress, compress
 
 from model import lines
+from model.pens import *
+
 
 def rmdir(path):
     if path.is_file() and path.exists():
@@ -369,7 +364,7 @@ def do_apply_ocg(basepage, rmpage, i, uses_base_pdf, ocgprop, annotations):
         # mess up the layer order, so we will ignore
         # them later.
         template_xobj_keys = \
-            re.findall('(\/Im[0-9]+)\s',
+            re.findall(r'(\/Im[0-9]+)\s',
                         stream[:template_endpos])
 
         # Page ocg
@@ -718,10 +713,9 @@ class DocumentPage:
             return
 
         # Load reMy version of page layers
-        pagever = None
         pagelayers = None
         with open(self.rmpath, 'rb') as f:
-            pagever, pagelayers = lines.readLines(f)
+            _, pagelayers = lines.readLines(f)
             f.close()
 
         # Load layer data
@@ -768,7 +762,6 @@ class DocumentPage:
             layer.render_to_painter(painter, vector)
 
 
-from model.pens import *
 class DocumentPageLayer:
     pen_widths = []
 
@@ -905,20 +898,13 @@ class DocumentPageLayer:
         # the reference count after I'm done with it, so that it gets
         # cleaned up by the python garbage collector.
 
-        image_ref = QByteArray()
         devpx = DISPLAY['screenwidth'] \
             * DISPLAY['screenheight']
         bytepp = 4  # ARGB32
-        image_ref.fill('\0', devpx * bytepp)
         qimage = QImage(b'\0' * devpx * bytepp,
                         DISPLAY['screenwidth'],
                         DISPLAY['screenheight'],
                         QImage.Format_ARGB32)
-
-        # This is a fix for a bug that still exists in PySide2
-        # https://github.com/matplotlib/matplotlib/issues/4283#issuecomment-95950441
-        import ctypes
-        ctypes.c_long.from_address(id(image_ref)).value=1
 
         imgpainter = QPainter(qimage)
         imgpainter.setRenderHint(QPainter.Antialiasing)
@@ -930,16 +916,15 @@ class DocumentPageLayer:
 
         del imgpainter
         del qimage
-        del image_ref
         gc.collect()
 
 
-from PySide2 import QtCore
-
 if __name__ == '__main__':
     import sys
-    app = QtCore.QCoreApplication(sys.argv)
+    app = QCoreApplication(sys.argv)
+    vector = True
+    format_ = 'vector' if vector else 'raster'
     # Demo
-    save_pdf('testing/output-vector.pdf', 'testing/samples', 'cb736ad2-b869-4253-979a-dbc5c01a9000', True, lambda x: print(x))
+    save_pdf(f'testing/output-{format_}.pdf', 'testing/samples', 'cb736ad2-b869-4253-979a-dbc5c01a9000', vector, lambda x: print(x))
     # PDF
-    save_pdf('testing/output-pdf-vector.pdf', 'testing/samples', '67917ebb-3664-4a7c-b243-6db4e10190b2', True, lambda x: print(x))
+    save_pdf(f'testing/output-pdf-{format_}.pdf', 'testing/samples', '67917ebb-3664-4a7c-b243-6db4e10190b2', vector, lambda x: print(x))
