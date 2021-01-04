@@ -20,26 +20,24 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
 from PySide2.QtCore import Qt, QLineF
-from PySide2.QtGui import QPen, QPainter
+from PySide2.QtGui import QPainter
+from .generic import GenericPen
 
-class EraserPen(QPen):
+class EraserPen(GenericPen):
     def __init__(self, *args, **kwargs):
-        super(type(self), self).__init__(*args, **kwargs)
-        self.setCapStyle(Qt.RoundCap)
-        self.setJoinStyle(Qt.RoundJoin)
-        self.setStyle(Qt.SolidLine)
-        super(type(self), self).setColor(Qt.transparent)
+        super().__init__(*args, **kwargs)
+        super().setColor(Qt.transparent)
 
     def setColor(self, color):
         # do nothing, keep transparent
         return
-    
+
     def paint_stroke(self, painter, stroke):
         for i, segment in enumerate(stroke.segments):
             if i+1 >= len(stroke.segments):
                 # no next segment, last 'to' point
                 continue
-            
+
             nextsegment = stroke.segments[i+1]
 
             # Set the width

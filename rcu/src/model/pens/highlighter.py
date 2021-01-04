@@ -25,7 +25,7 @@ from PySide2.QtGui import QPen, QColor, QPainterPath, QPainter, \
 
 class HighlighterPen(QPen):
     def __init__(self, *args, **kwargs):
-        super(type(self), self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.layer = kwargs.get('layer')
         self.annotate = False #TODO bool(int(QSettings().value(
@@ -37,7 +37,7 @@ class HighlighterPen(QPen):
 
         # Pull the color from the settings
         color = QColor(255, 233, 74, 100) #QSettings().value('pane/notebooks/export_pdf_highlightink')
-        super(type(self), self).setColor(color)
+        super().setColor(color)
 
     def setColor(self, color):
         # Highlighter color is not adjustable like the others (using

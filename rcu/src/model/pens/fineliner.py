@@ -19,27 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-from PySide2.QtCore import Qt, QLineF
-from PySide2.QtGui import QPen
+from .generic import GenericPen
 
-class FinelinerPen(QPen):
-    def __init__(self, *args, **kwargs):
-        super(type(self), self).__init__(*args, **kwargs)
-        self.setCapStyle(Qt.RoundCap)
-        self.setJoinStyle(Qt.MiterJoin)
-        self.setStyle(Qt.SolidLine)
-    
-    def paint_stroke(self, painter, stroke):
-        for i, segment in enumerate(stroke.segments):
-            if i+1 >= len(stroke.segments):
-                # no next segment, last 'to' point
-                continue
-            
-            nextsegment = stroke.segments[i+1]
-
-            # Set the width
-            self.setWidthF(segment.width)
-
-            painter.setPen(self)
-            painter.drawLine(QLineF(segment.x, segment.y,
-                                    nextsegment.x, nextsegment.y))
+class FinelinerPen(GenericPen):
+    pass

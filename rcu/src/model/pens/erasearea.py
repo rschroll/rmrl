@@ -19,16 +19,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-from PySide2.QtCore import Qt
-from PySide2.QtGui import QPen
+from .generic import GenericPen
 
-class EraseAreaPen(QPen):
-    def __init__(self, *args, **kwargs):
-        super(type(self), self).__init__(*args, **kwargs)
-        self.setCapStyle(Qt.RoundCap)
-        self.setJoinStyle(Qt.MiterJoin)
-        self.setStyle(Qt.SolidLine)
-    
+class EraseAreaPen(GenericPen):
     def paint_stroke(self, painter, stroke):
         # Don't paint anything.
         return

@@ -20,8 +20,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
 from PySide2.QtCore import Qt, QLineF
-from PySide2.QtGui import QPen, QBrush, QColor, QPainter, QPainterPath
+from PySide2.QtGui import QBrush, QColor, QPainter, QPainterPath
 import math
+from .generic import GenericPen
 
 
 def point_distance(x1, y1, x2, y2):
@@ -29,22 +30,17 @@ def point_distance(x1, y1, x2, y2):
     return dist
 
 
-class PencilPen(QPen):
+class PencilPen(GenericPen):
     def __init__(self, *args, **kwargs):
-        super(type(self), self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.textures = kwargs.get('pencil_textures')
         self.vector = kwargs.get('vector', False)
-        self.setCapStyle(Qt.RoundCap)
-        self.setJoinStyle(Qt.MiterJoin)
-        self.setStyle(Qt.SolidLine)
 
         self.ocolor = None
 
     def paint_stroke(self, painter, stroke):
         brush = QBrush()
         brush.setColor(self.color())
-
-
 
         # if self.vector:
         #     path = QPainterPath()
@@ -55,7 +51,6 @@ class PencilPen(QPen):
         #     painter.setPen(self)
         #     painter.drawPath(path)
         #     return
-
 
         for i, segment in enumerate(stroke.segments):
             if i+1 >= len(stroke.segments):

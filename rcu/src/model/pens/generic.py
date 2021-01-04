@@ -24,22 +24,25 @@ from PySide2.QtGui import QPen
 
 class GenericPen(QPen):
     def __init__(self, *args, **kwargs):
-        super(type(self), self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.setCapStyle(Qt.RoundCap)
         self.setJoinStyle(Qt.MiterJoin)
         self.setStyle(Qt.SolidLine)
-    
+
     def paint_stroke(self, painter, stroke):
         for i, segment in enumerate(stroke.segments):
             if i+1 >= len(stroke.segments):
                 # no next segment, last 'to' point
                 continue
-            
+
             nextsegment = stroke.segments[i+1]
 
-            # Set the width
-            self.setWidthF(segment.width)
+            self.set_segment_properties(segment, nextsegment)
 
             painter.setPen(self)
             painter.drawLine(QLineF(segment.x, segment.y,
                                     nextsegment.x, nextsegment.y))
+
+    def set_segment_properties(self, segment, nextsegment):
+        # Set the width
+        self.setWidthF(segment.width)
