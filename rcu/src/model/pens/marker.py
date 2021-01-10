@@ -22,9 +22,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from .generic import GenericPen
 
 class MarkerPen(GenericPen):
-    def set_segment_properties(self, segment, nextsegment):
+    def set_segment_properties(self, canvas, segment, nextsegment):
         # Set the width
         # maxdelta = segment.width / 0.5
         # delta = (segment.pressure - 1) * maxdelta
         # self.setWidthF(segment.width + delta)
-        self.setWidthF(segment.width * 0.7)
+        canvas.setLineWidth(segment.width * 0.7)

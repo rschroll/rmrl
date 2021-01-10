@@ -19,31 +19,26 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-from PySide2.QtCore import Qt, QLineF
-from PySide2.QtGui import QPen
+def pairs(iterable):
+    it = iter(iterable)
+    old = next(it)
+    for new in it:
+        yield (old, new)
+        old = new
 
-class GenericPen(QPen):
+class GenericPen(object):
     def __init__(self, color, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setCapStyle(Qt.RoundCap)
-        self.setJoinStyle(Qt.MiterJoin)
-        self.setStyle(Qt.SolidLine)
-        self.setColor(color)
+        self.color = color
 
-    def paint_stroke(self, painter, stroke):
-        for i, segment in enumerate(stroke.segments):
-            if i+1 >= len(stroke.segments):
-                # no next segment, last 'to' point
-                continue
+    def paint_stroke(self, canvas, stroke):
+        canvas.setLineCap(1)  # Rounded
+        canvas.setLineJoin(1)  # Round join
+        #canvas.setDash ?? for solid line
+        canvas.setStrokeColor(self.color)
+        for p1, p2 in pairs(stroke.segments):
+            self.set_segment_properties(canvas, p1, p2)
+            canvas.line(p1.x, p1.y, p2.x, p2.y)
 
-            nextsegment = stroke.segments[i+1]
-
-            self.set_segment_properties(segment, nextsegment)
-
-            painter.setPen(self)
-            painter.drawLine(QLineF(segment.x, segment.y,
-                                    nextsegment.x, nextsegment.y))
-
-    def set_segment_properties(self, segment, nextsegment):
+    def set_segment_properties(self, canvas, segment, nextsegment):
         # Set the width
-        self.setWidthF(segment.width)
+        canvas.setLineWidth(segment.width)

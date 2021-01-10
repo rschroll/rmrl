@@ -7,7 +7,6 @@ from .marker import MarkerPen
 from .fineliner import FinelinerPen
 from .highlighter import HighlighterPen
 from .eraser import EraserPen
-from .erasearea import EraseAreaPen
 from .calligraphy import CalligraphyPen
 
 # These pen codes probably refer to different versions through
@@ -22,7 +21,7 @@ PEN_MAPPING = dict(enumerate([
     HighlighterPen,      # Highlighter
     EraserPen,           # Eraser
     MechanicalPencilPen, # Mechanical Pencil
-    EraseAreaPen,        # Erase Area
+    EraserPen,           # Erase Area
     None,                # unknown
     None,                # unknown
     None,                # unknown

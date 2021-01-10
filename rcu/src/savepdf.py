@@ -28,13 +28,12 @@ import shutil
 import os
 import re
 
-from PySide2.QtGui import QPainter, QImage, QColor
-from PySide2.QtCore import Qt, QSizeF, QCoreApplication
-from PySide2.QtPrintSupport import QPrinter
-from PySide2.QtSvg import QSvgRenderer
-
 from pdfrw import PdfReader, PdfWriter, PageMerge, PdfDict, PdfArray, PdfName, \
     IndirectPdfDict, uncompress, compress
+
+from reportlab.pdfgen import canvas
+from reportlab.graphics import renderPDF
+from svglib.svglib import svg2rlg
 
 from model import lines
 from model.pens import *
@@ -131,25 +130,17 @@ def save_pdf(filepath,  # Output?
     os.close(th)
     tmprmpdf = Path(tmp)
     cleanup_stuff.add(tmprmpdf)
-    pdf = QPrinter()
-    res = DISPLAY['dpi']
-    width = DISPLAY['screenwidth']
-    height = DISPLAY['screenheight']
-    pdf.setPaperSize(QSizeF(width / res, height / res), QPrinter.Inch)
-    pdf.setResolution(res)
-    pdf.setOutputFormat(QPrinter.PdfFormat)
-    pdf.setPageMargins(0, 0, 0, 0, QPrinter.Inch)
-    pdf.setOutputFileName(str(tmprmpdf))
+
+    pdf_canvas = canvas.Canvas(str(tmprmpdf), (PDFWIDTH, PDFHEIGHT))
+    # TODO: check pageCompression
 
     # Don't load all the pages into memory, because large notebooks
     # about 500 pages could use up to 3 GB of RAM. Create them by
     # iteration so they get released by garbage collector.
     changed_pages = []
-    painter = QPainter(pdf)
     annotations = []
     for i in range(0, len(contentdict['pages'])):
         if abort_func():
-            painter.end()
             cleanup()
             return
 
@@ -157,13 +148,11 @@ def save_pdf(filepath,  # Output?
                             pencil_textures=pencil_textures)
         if page.rmpath.exists():
             changed_pages.append(i)
-        page.render_to_painter(painter, vector)
+        page.render_to_painter(pdf_canvas, vector)
         annotations.append(page.get_grouped_annotations())
-        if i < len(contentdict['pages'])-1:
-            pdf.newPage()
         progpct = (i + 1) / len(contentdict['pages']) * 25 + 50
         prog_cb(progpct)
-    painter.end()
+    pdf_canvas.save()
 
     if abort_func():
         cleanup()
@@ -687,7 +676,7 @@ class DocumentPage:
             tmpname = tmpnamearray[max(self.num, len(tmpnamearray) - 1)]
             tmparchivepath = TEMPLATE_PATH / f'{tmpname}.svg'
             if tmpname != 'Blank' and tmparchivepath.exists():
-                self.template = open(tmparchivepath, 'rb').read()
+                self.template = str(tmparchivepath)
 
         # Load layers
         self.layers = []
@@ -733,31 +722,39 @@ class DocumentPage:
             layer.strokes = layerstrokes
             self.layers.append(layer)
 
-    def render_to_painter(self, painter, vector):
+    def render_to_painter(self, canvas, vector):
         # Render template layer
         if self.template:
-            renderer = QSvgRenderer(self.template)
-            renderer.render(painter)
+            background = svg2rlg(self.template)
+            background.scale(PDFWIDTH / background.width, PDFWIDTH / background.width)
+            renderPDF.draw(background, canvas, 0, 0)
             # Bitmaps are rendered into the PDF as XObjects, which are
             # easy to pick out for layers. Vectors will render
             # everything inline, and so we need to add a 'magic point'
             # to mark the end of the template layer.
-            if vector:
+            if False and vector:  #TODO
                 pen = GenericPen(color=Qt.transparent, vector=vector)
                 painter.setPen(pen)
                 painter.drawPoint(800, 85)
 
+        # The annotation coordinate system is upside down compared to the PDF
+        # coordinate system, so offset the bottom to the top and then flip
+        # vertically along the old bottom / new top to place the annotations
+        # correctly.
+        canvas.translate(0, PDFHEIGHT)
+        canvas.scale(PTPERPX, -PTPERPX)
         # Render user layers
         for layer in self.layers:
             # Bitmaps are rendered into the PDF as XObjects, which are
             # easy to pick out for layers. Vectors will render
             # everything inline, and so we need to add a 'magic point'
             # to mark the beginning of layers.
-            if vector:
+            if False and vector:  #TODO
                 pen = GenericPen(color=Qt.transparent, vector=vector)
                 painter.setPen(pen)
                 painter.drawPoint(420, 69)
-            layer.render_to_painter(painter, vector)
+            layer.render_to_painter(canvas, vector)
+        canvas.showPage()
 
 
 class DocumentPageLayer:
@@ -772,9 +769,9 @@ class DocumentPageLayer:
             #QSettings().value('pane/notebooks/export_pdf_blackink'),
             #QSettings().value('pane/notebooks/export_pdf_grayink'),
             #QSettings().value('pane/notebooks/export_pdf_whiteink')
-            QColor(0, 0, 0),
-            QColor(128, 128, 128),
-            QColor(255, 255, 255)
+            (0, 0, 0),
+            (0.5, 0.5, 0.5),
+            (1, 1, 1)
         ]
 
         # Set this from the calling func
@@ -836,13 +833,14 @@ class DocumentPageLayer:
 
         return (self.name, annot_rects)
 
-    def paint_strokes(self, painter, vector):
+    def paint_strokes(self, canvas, vector):
         for stroke in self.strokes:
             pen, color, unk1, width, unk2, segments = stroke
 
-            penclass = PEN_MAPPING.get(pen, GenericPen)
-            if penclass is GenericPen:
+            penclass = PEN_MAPPING.get(pen)
+            if penclass is None:
                 log.error("Unknown pen code %d" % pen)
+                penclass = GenericPen
 
             qpen = penclass(pencil_textures=self.pencil_textures,
                             vector=vector,
@@ -850,12 +848,14 @@ class DocumentPageLayer:
                             color=self.colors[color])
 
             # Do the needful
-            qpen.paint_stroke(painter, stroke)
+            qpen.paint_stroke(canvas, stroke)
 
     def render_to_painter(self, painter, vector):
         if vector: # Turn this on with vector otherwise off to get hybrid
             self.paint_strokes(painter, vector=vector)
             return
+
+        assert False
 
         # I was having problems with QImage corruption (garbage data)
         # and memory leaking on large notebooks. I fixed this by giving
@@ -886,9 +886,9 @@ class DocumentPageLayer:
 
 if __name__ == '__main__':
     import sys
-    app = QCoreApplication(sys.argv)
     vector = True
-    format_ = 'vector' if vector else 'raster'
+    #format_ = 'vector' if vector else 'raster'
+    format_ = 'reportlab'
     # Demo
     save_pdf(f'testing/output-{format_}.pdf', 'testing/samples', 'cb736ad2-b869-4253-979a-dbc5c01a9000', vector, lambda x: print(x))
     # PDF

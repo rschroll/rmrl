@@ -19,8 +19,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-from PySide2.QtGui import QBrush, QColor
-from pathlib import Path
 from .generic import GenericPen
 
 class MechanicalPencilPen(GenericPen):
@@ -29,24 +27,16 @@ class MechanicalPencilPen(GenericPen):
         self.textures = kwargs.get('pencil_textures', None)
         self.vector = kwargs.get('vector', False)
 
-        self.ocolor = None
-
-    def set_segment_properties(self, segment, nextsegment):
-        brush = QBrush()
-
+    def set_segment_properties(self, canvas, segment, nextsegment):
         # Set the width
-        self.setWidthF(segment.width / 1.5)
+        canvas.setLineWidth(segment.width / 1.5)
 
         # Set the brush/pattern
         if self.vector:
-            if not self.ocolor:
-                self.ocolor = self.color()
-            ncolor = QColor()
-            ncolor.setRedF(1 - ((1 - self.ocolor.redF()) * segment.pressure))
-            ncolor.setGreenF(1 - ((1 - self.ocolor.greenF()) * segment.pressure))
-            ncolor.setBlueF(1 - ((1 - self.ocolor.blueF()) * segment.pressure))
-            self.setColor(ncolor)
+            stroke_color = [1 - (1 - c) * segment.pressure for c in self.color]
+            canvas.setStrokeColor(stroke_color)
         else:
+            assert False
             brush.setColor(self.color())
             texture = self.textures.get_linear(0.00)
             pressure_textures = [

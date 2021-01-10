@@ -22,8 +22,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from .generic import GenericPen
 
 class BallpointPen(GenericPen):
-    def set_segment_properties(self, segment, nextsegment):
+    def set_segment_properties(self, canvas, segment, nextsegment):
         # Set the width
         maxdelta = segment.width / 2
         delta = (segment.pressure - 1) * maxdelta
-        self.setWidthF(segment.width + delta)
+        canvas.setLineWidth(segment.width + delta)

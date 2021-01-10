@@ -19,26 +19,22 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-from PySide2.QtCore import Qt, QLineF
-from PySide2.QtGui import QBrush, QColor, QPainter, QPainterPath
-import math
 from .generic import GenericPen
 
-
-def point_distance(x1, y1, x2, y2):
-    dist = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
-    return dist
-
-
 class PencilPen(GenericPen):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.textures = kwargs.get('pencil_textures')
-        self.vector = kwargs.get('vector', False)
 
-        self.ocolor = None
+    def set_segment_properties(self, canvas, segment, nextsegment):
+        basewidth = segment.width
+        deltamax = 0.42 * basewidth
+        delta = -deltamax
+        prim_width = basewidth + delta
+        canvas.setLineWidth(prim_width)
 
-    def paint_stroke(self, painter, stroke):
+        stroke_color = [1 - (1 - c) * segment.pressure for c in self.color]
+        canvas.setStrokeColor(stroke_color)
+
+    def old_paint_stroke(self, painter, stroke):
+        assert False
         brush = QBrush()
         brush.setColor(self.color())
 

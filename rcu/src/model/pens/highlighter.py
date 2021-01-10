@@ -19,46 +19,33 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-from PySide2.QtCore import Qt, QSettings
-from PySide2.QtGui import QPen, QColor, QPainterPath, QPainter, \
-    QPainterPathStroker
+from .generic import GenericPen
 
-class HighlighterPen(QPen):
+class HighlighterPen(GenericPen):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
         self.layer = kwargs.get('layer')
         self.annotate = False #TODO bool(int(QSettings().value(
         #    'pane/notebooks/export_pdf_annotate')))
 
-        self.setCapStyle(Qt.FlatCap)
-        self.setJoinStyle(Qt.BevelJoin)
-        self.setStyle(Qt.SolidLine)
+    def paint_stroke(self, canvas, stroke):
+        canvas.setLineCap(2)  # Square
+        canvas.setLineJoin(1)  # Round
+        #canvas.setDash ?? for solid line
+        canvas.setStrokeColor((1.000, 0.914, 0.290), alpha=0.392)
+        canvas.setLineWidth(stroke.width)
 
-        # Pull the color from the settings
-        color = QColor(255, 233, 74, 100) #QSettings().value('pane/notebooks/export_pdf_highlightink')
-        super().setColor(color)
-
-    def setColor(self, color):
-        # Highlighter color is not adjustable like the others (using
-        # the color index)
-        return
-
-    def paint_stroke(self, painter, stroke):
-        path = QPainterPath()
+        path = canvas.beginPath()
         path.moveTo(stroke.segments[0].x, stroke.segments[0].y)
-
-        for i, segment in enumerate(stroke.segments, 1):
+        for segment in stroke.segments[1:]:
             path.lineTo(segment.x, segment.y)
+        canvas.drawPath(path, stroke=1, fill=0)
 
-        self.setWidthF(stroke.width)
-        painter.setPen(self)
-        old_comp = painter.compositionMode()
-        painter.setCompositionMode(QPainter.CompositionMode_Overlay)
-        painter.drawPath(path)
-        painter.setCompositionMode(old_comp)
+        # Alpha persists if we don't specify it.
+        canvas.setStrokeColor('black', alpha=1)
 
         if self.annotate:
+            assert False
             # Create outline of the path. Annotations that are close to
             # each other get groups. This is determined by overlapping
             # paths. In order to fuzz this, we'll double the normal

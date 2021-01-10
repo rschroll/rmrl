@@ -19,9 +19,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-from PySide2.QtCore import Qt, QLineF
-from PySide2.QtGui import QPen, QBrush, QColor, QTransform
-
 import math
 
 from .generic import GenericPen
@@ -36,21 +33,13 @@ class PaintbrushPen(GenericPen):
         self.textures = kwargs.get('pencil_textures')
         self.vector = kwargs.get('vector', False)
 
-        self.ocolor = None
-
-    def set_segment_properties(self, segment, nextsegment):
-        brush = QBrush()
-        brush.setColor(self.color())
-
-        angle = math.degrees(nextsegment.direction) + 90
-        transform = QTransform().rotate(angle)
-
+    def set_segment_properties(self, canvas, segment, nextsegment):
         # Set the width
         modwidth = segment.width * 0.75
         maxdelta = modwidth * 0.75
         delta = (segment.pressure - 1) * maxdelta
         newwidth = modwidth + delta
-        self.setWidthF(newwidth)
+        canvas.setLineWidth(newwidth)
 
         # # We want textures only in a mid-range, with the high and
         # # low ends going to solid patterns (clamping).
@@ -67,14 +56,13 @@ class PaintbrushPen(GenericPen):
         press_mod *= 2 - (segment.speed / 75)
 
         if self.vector:
-            if not self.ocolor:
-                self.ocolor = self.color()
-            ncolor = QColor()
-            ncolor.setRedF(1 - (1 - self.ocolor.redF()) * press_mod  / 2)
-            ncolor.setGreenF(1 - (1 - self.ocolor.greenF()) * press_mod / 2)
-            ncolor.setBlueF(1 - (1 - self.ocolor.blueF()) * press_mod / 2)
-            self.setColor(ncolor)
+            stroke_color = [1 - (1 - c) * press_mod / 2 for c in self.color]
+            canvas.setStrokeColor(stroke_color)
         else:
+            assert False
+            angle = math.degrees(nextsegment.direction) + 90
+            transform = QTransform().rotate(angle)
+
             texture = self.textures.get_log_paintbrush(press_mod)
             brush.setTextureImage(texture)
             brush.setTransform(transform)
@@ -84,6 +72,6 @@ class PaintbrushPen(GenericPen):
         distance = point_distance(segment.x, segment.y,
                                     nextsegment.x, nextsegment.y)
         if distance < newwidth / 1:
-            self.setCapStyle(Qt.RoundCap)
+            canvas.setLineCap(1)  # Rounded
         else:
-            self.setCapStyle(Qt.FlatCap)
+            canvas.setLineCap(0)  # Flat
