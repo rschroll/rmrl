@@ -31,6 +31,7 @@ class GenericPen(object):
         self.color = color
 
     def paint_stroke(self, canvas, stroke):
+        canvas.saveState()
         canvas.setLineCap(1)  # Rounded
         canvas.setLineJoin(1)  # Round join
         #canvas.setDash ?? for solid line
@@ -38,6 +39,7 @@ class GenericPen(object):
         for p1, p2 in pairs(stroke.segments):
             self.set_segment_properties(canvas, p1, p2)
             canvas.line(p1.x, p1.y, p2.x, p2.y)
+        canvas.restoreState()
 
     def set_segment_properties(self, canvas, segment, nextsegment):
         # Set the width

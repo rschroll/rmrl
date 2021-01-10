@@ -29,6 +29,7 @@ class HighlighterPen(GenericPen):
         #    'pane/notebooks/export_pdf_annotate')))
 
     def paint_stroke(self, canvas, stroke):
+        canvas.saveState()
         canvas.setLineCap(2)  # Square
         canvas.setLineJoin(1)  # Round
         #canvas.setDash ?? for solid line
@@ -40,9 +41,7 @@ class HighlighterPen(GenericPen):
         for segment in stroke.segments[1:]:
             path.lineTo(segment.x, segment.y)
         canvas.drawPath(path, stroke=1, fill=0)
-
-        # Alpha persists if we don't specify it.
-        canvas.setStrokeColor('black', alpha=1)
+        canvas.restoreState()
 
         if self.annotate:
             assert False
