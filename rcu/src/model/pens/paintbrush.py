@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import math
 
 from .generic import GenericPen
+from .textures import PENCIL_TEXTURES
 
 def point_distance(x1, y1, x2, y2):
     dist = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
@@ -30,7 +31,6 @@ def point_distance(x1, y1, x2, y2):
 class PaintbrushPen(GenericPen):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.textures = kwargs.get('pencil_textures')
         self.vector = kwargs.get('vector', False)
 
     def set_segment_properties(self, canvas, segment, nextsegment):
@@ -63,7 +63,7 @@ class PaintbrushPen(GenericPen):
             angle = math.degrees(nextsegment.direction) + 90
             transform = QTransform().rotate(angle)
 
-            texture = self.textures.get_log_paintbrush(press_mod)
+            texture = PENCIL_TEXTURES.get_log_paintbrush(press_mod)
             brush.setTextureImage(texture)
             brush.setTransform(transform)
             self.setBrush(brush)

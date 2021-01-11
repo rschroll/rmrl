@@ -113,11 +113,6 @@ def save_pdf(source, vector=True, prog_cb=lambda x: None):
     # raises an error, this function will take steps to abort gracefullly
     # and pass the error upwards.
 
-    # Load pencil textures (shared for brushes, takes a lot of time
-    # because there are many)
-    from model.pens.textures import PencilTextures
-    pencil_textures = PencilTextures()
-
     # If this is using a base PDF, the percentage is calculated
     # differently.
     uses_base_pdf = source.exists('{ID}.pdf')
@@ -149,8 +144,7 @@ def save_pdf(source, vector=True, prog_cb=lambda x: None):
     changed_pages = []
     annotations = []
     for i in range(0, len(contentdict['pages'])):
-        page = DocumentPage(source, contentdict, i,
-                            pencil_textures=pencil_textures)
+        page = DocumentPage(source, contentdict, i)
         if source.exists(page.rmpath):
             changed_pages.append(i)
         page.render_to_painter(pdf_canvas, vector)
@@ -612,12 +606,10 @@ class DocumentPage:
     def __init__(self,
                  source,
                  doc_contentdict,  # Added
-                 pagenum,
-                 pencil_textures=None):
+                 pagenum):
         # Page 0 is the first page!
         self.source = source
         self.num = pagenum
-        self.pencil_textures = pencil_textures
 
         # get page id
         pid = str(pagenum) #For download; from device: doc_contentdict['pages'][pagenum]
@@ -688,9 +680,7 @@ class DocumentPage:
             except:
                 name = 'Layer ' + str(i + 1)
 
-            layer = DocumentPageLayer(self,
-                                      name=name,
-                                      pencil_textures=self.pencil_textures)
+            layer = DocumentPageLayer(self, name=name)
             layer.strokes = layerstrokes
             self.layers.append(layer)
 
@@ -732,10 +722,9 @@ class DocumentPage:
 class DocumentPageLayer:
     pen_widths = []
 
-    def __init__(self, page, name=None, pencil_textures=None):
+    def __init__(self, page, name=None):
         self.page = page
         self.name = name
-        self.pencil_textures = pencil_textures
 
         self.colors = [
             #QSettings().value('pane/notebooks/export_pdf_blackink'),
@@ -814,8 +803,7 @@ class DocumentPageLayer:
                 log.error("Unknown pen code %d" % pen)
                 penclass = GenericPen
 
-            qpen = penclass(pencil_textures=self.pencil_textures,
-                            vector=vector,
+            qpen = penclass(vector=vector,
                             layer=self,
                             color=self.colors[color])
 

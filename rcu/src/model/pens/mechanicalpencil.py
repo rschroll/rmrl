@@ -20,11 +20,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
 from .generic import GenericPen
+from .textures import PENCIL_TEXTURES
 
 class MechanicalPencilPen(GenericPen):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.textures = kwargs.get('pencil_textures', None)
         self.vector = kwargs.get('vector', False)
 
     def set_segment_properties(self, canvas, segment, nextsegment):
@@ -38,19 +38,19 @@ class MechanicalPencilPen(GenericPen):
         else:
             assert False
             brush.setColor(self.color())
-            texture = self.textures.get_linear(0.00)
+            texture = PENCIL_TEXTURES.get_linear(0.00)
             pressure_textures = [
-                self.textures.get_linear(0.10),
-                self.textures.get_linear(0.15),
-                self.textures.get_linear(0.20),
-                self.textures.get_linear(0.25),
-                self.textures.get_linear(0.30),
-                self.textures.get_linear(0.40),
-                self.textures.get_linear(0.50),
-                self.textures.get_linear(0.60),
-                self.textures.get_linear(0.70),
-                self.textures.get_linear(0.80),
-                self.textures.get_linear(0.90)
+                PENCIL_TEXTURES.get_linear(0.10),
+                PENCIL_TEXTURES.get_linear(0.15),
+                PENCIL_TEXTURES.get_linear(0.20),
+                PENCIL_TEXTURES.get_linear(0.25),
+                PENCIL_TEXTURES.get_linear(0.30),
+                PENCIL_TEXTURES.get_linear(0.40),
+                PENCIL_TEXTURES.get_linear(0.50),
+                PENCIL_TEXTURES.get_linear(0.60),
+                PENCIL_TEXTURES.get_linear(0.70),
+                PENCIL_TEXTURES.get_linear(0.80),
+                PENCIL_TEXTURES.get_linear(0.90)
             ]
             for n, tex in enumerate(pressure_textures):
                 threshold = n / len(pressure_textures)

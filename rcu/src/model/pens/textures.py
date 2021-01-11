@@ -62,3 +62,7 @@ class PencilTextures:
         if i >= scale:
             i = scale - 1
         return self.textures_log_paintbrush[i]
+
+# Load pencil textures (shared for brushes, takes a lot of time
+# because there are many)
+PENCIL_TEXTURES = PencilTextures()

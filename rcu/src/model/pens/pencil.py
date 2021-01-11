@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
 from .generic import GenericPen
+from .textures import PENCIL_TEXTURES
 
 class PencilPen(GenericPen):
 
@@ -94,7 +95,7 @@ class PencilPen(GenericPen):
                 ncolor.setBlueF(1 - ((1 - self.ocolor.blueF()) * segment.pressure))
                 self.setColor(ncolor)
             else:
-                texture = self.textures.get_log(segment.pressure)
+                texture = PENCIL_TEXTURES.get_log(segment.pressure)
                 brush.setTextureImage(texture)
                 self.setBrush(brush)
             painter.setPen(self)
@@ -107,7 +108,7 @@ class PencilPen(GenericPen):
                 spat_width = prim_width * 1.25
                 self.setWidthF(spat_width)
 
-                texture = self.textures.get_log(segment.pressure * 0.7)
+                texture = PENCIL_TEXTURES.get_log(segment.pressure * 0.7)
                 brush.setTextureImage(texture)
                 self.setBrush(brush)
                 painter.setPen(self)
