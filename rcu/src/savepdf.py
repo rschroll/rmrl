@@ -103,21 +103,15 @@ class ZipSource:
             return False
 
 
-def save_pdf(source,
-             vector=True,
-             prog_cb=lambda x: (),
-             abort_func=lambda: False):
+def save_pdf(source, vector=True, prog_cb=lambda x: None):
     # Exports the self as a PDF document to disk
 
-    # prog_cb should emit between 0-100 (percent complete).
-    # Percentages are split between three processes. Downloading the
-    # archive takes the first 50%. If there is not a base PDF, the
-    # RM page rasterization takes the next 50%. If there is a base
-    # PDF, then the page rasterization takes 25% and the PDF
-    # merging takes another 25%.
-
-    if abort_func():
-        return
+    # prog_cb will be called with a progress percentage between 0 and
+    # 100.  This percentage calculation is split 50% for the rendering
+    # of the lines and 50% merging with the base PDF file.  This callback
+    # also provides an opportunity to abort the process. If the callback
+    # raises an error, this function will take steps to abort gracefullly
+    # and pass the error upwards.
 
     # Load pencil textures (shared for brushes, takes a lot of time
     # because there are many)
@@ -155,22 +149,15 @@ def save_pdf(source,
     changed_pages = []
     annotations = []
     for i in range(0, len(contentdict['pages'])):
-        if abort_func():
-            return
-
         page = DocumentPage(source, contentdict, i,
                             pencil_textures=pencil_textures)
         if source.exists(page.rmpath):
             changed_pages.append(i)
         page.render_to_painter(pdf_canvas, vector)
         annotations.append(page.get_grouped_annotations())
-        progpct = (i + 1) / len(contentdict['pages']) * 25 + 50
-        prog_cb(progpct)
+        prog_cb((i + 1) / len(contentdict['pages']) * 50)
     pdf_canvas.save()
     tmpfh.seek(0)
-
-    if abort_func():
-        return
 
     # This new PDF represents just the notebook. If there was a
     # parent PDF, merge it now.
@@ -200,16 +187,6 @@ def save_pdf(source,
         D=PdfDict(Order=PdfArray()))
 
     for i in range(0, len(basepdfr.pages)):
-        if abort_func():
-            return
-
-        def release_progress():
-            # This emits the other 25% of the progress. Only
-            # run this method when this page is finished
-            # processing.
-            progpct = ((i + 1) / rmpdfr.numPages * 25) + 75
-            prog_cb(progpct)
-
         basepage = basepdfr.pages[i]
         rmpage = rmpdfr.pages[i]
 
@@ -232,7 +209,7 @@ def save_pdf(source,
         if uses_base_pdf:
             merge_pages(basepage, rmpage, i in changed_pages)
 
-        release_progress()
+        prog_cb(((i + 1) / rmpdfr.numPages * 50) + 50)
 
     # Apply the OCG order. The basepdf may have already had OCGs
     # and so we must not overwrite them. NOTE: there are other
