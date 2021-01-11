@@ -22,10 +22,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import log
 import tempfile
 from pathlib import Path
+import io
 import json
 import gc
-import shutil
-import os
 import re
 
 from pdfrw import PdfReader, PdfWriter, PageMerge, PdfDict, PdfArray, PdfName, \
@@ -38,19 +37,6 @@ from svglib.svglib import svg2rlg
 from model import lines
 from model.pens import *
 
-
-def rmdir(path):
-    if path.is_file() and path.exists():
-        path.unlink()
-    try:
-        for child in path.glob('*'):
-            if child.is_file():
-                child.unlink()
-            else:
-                rmdir(child)
-        path.rmdir()
-    except:
-        pass
 
 # From rcu.py, with comment
 # Todo: this should be based on the specific RM model
@@ -66,13 +52,58 @@ PTPERPX = 72 / DISPLAY['dpi']
 PDFHEIGHT = DISPLAY['screenheight'] * PTPERPX
 PDFWIDTH = DISPLAY['screenwidth'] * PTPERPX
 
+SPOOL_MAX = 10 * 1024 * 1024
+
 # TODO: parameterize
 TEMPLATE_PATH = Path('/home/pi/source-rcu-r2020-003/rcu/src/templates')
 
 
-def save_pdf(filepath,  # Output?
-             source_dir,  # Added - directory with all extracted files
-             uuid,  # Added
+class FSSource:
+
+    def __init__(self, base_dir, doc_id):
+        self.base_dir = Path(base_dir)
+        self.doc_id = doc_id
+
+    def format_name(self, name):
+        return self.base_dir / name.format(ID=self.doc_id)
+
+    def open(self, fn, mode='r'):
+        return open(self.format_name(fn), mode)
+
+    def exists(self, fn):
+        return self.format_name(fn).exists()
+
+
+class ZipSource:
+
+    def __init__(self, zip_file, encoding='utf-8'):
+        self.zip_file = zip_file
+        self.encoding = encoding
+        for fn in self.zip_file.namelist():
+            if fn.endswith('.content'):
+                self.doc_id = fn[:-8]
+                break
+        else:
+            raise FileNotFoundError('Could not find .content file')
+
+    def format_name(self, name):
+        return name.format(ID=self.doc_id)
+
+    def open(self, fn, mode='r'):
+        f = self.zip_file.open(self.format_name(fn), mode.strip('b'))
+        if mode.endswith('b'):
+            return f
+        return io.TextIOWrapper(f, encoding=self.encoding)
+
+    def exists(self, fn):
+        try:
+            self.zip_file.getinfo(self.format_name(fn))
+            return True
+        except KeyError:
+            return False
+
+
+def save_pdf(source,
              vector=True,
              prog_cb=lambda x: (),
              abort_func=lambda: False):
@@ -85,13 +116,6 @@ def save_pdf(filepath,  # Output?
     # PDF, then the page rasterization takes 25% and the PDF
     # merging takes another 25%.
 
-    # This holds stuff to clean up
-    cleanup_stuff = set()
-
-    def cleanup():
-        for thing in cleanup_stuff:
-            rmdir(thing)
-
     if abort_func():
         return
 
@@ -100,23 +124,18 @@ def save_pdf(filepath,  # Output?
     from model.pens.textures import PencilTextures
     pencil_textures = PencilTextures()
 
-    tmpdir = source_dir
-
     # If this is using a base PDF, the percentage is calculated
     # differently.
-    pdfpath = Path(tmpdir / Path(uuid + '.pdf'))
-    uses_base_pdf = pdfpath.exists()
+    uses_base_pdf = source.exists('{ID}.pdf')
 
     # Document metadata should already be loaded (from device)
     # ...
 
     # Generate page information
-    contentpath = Path(tmpdir / Path(uuid + '.content'))
     contentdict = {}
-    if contentpath.exists():
-        with open(contentpath, 'r') as f:
+    if source.exists('{ID}.content'):
+        with source.open('{ID}.content', 'r') as f:
             contentdict = json.load(f)
-            f.close()
     # If a PDF file was uploaded, but never opened, there may not be
     # a .content file. So, just load a barebones one with a 'pages'
     # key of zero length, so it doesn't break the rest of the
@@ -126,12 +145,8 @@ def save_pdf(filepath,  # Output?
         contentdict['pages'] = []
 
     # Render each page as a pdf
-    th, tmp = tempfile.mkstemp()
-    os.close(th)
-    tmprmpdf = Path(tmp)
-    cleanup_stuff.add(tmprmpdf)
-
-    pdf_canvas = canvas.Canvas(str(tmprmpdf), (PDFWIDTH, PDFHEIGHT))
+    tmpfh = tempfile.TemporaryFile()
+    pdf_canvas = canvas.Canvas(tmpfh, (PDFWIDTH, PDFHEIGHT))
     # TODO: check pageCompression
 
     # Don't load all the pages into memory, because large notebooks
@@ -141,41 +156,37 @@ def save_pdf(filepath,  # Output?
     annotations = []
     for i in range(0, len(contentdict['pages'])):
         if abort_func():
-            cleanup()
             return
 
-        page = DocumentPage(contentdict, uuid, i, tmpdir,
+        page = DocumentPage(source, contentdict, i,
                             pencil_textures=pencil_textures)
-        if page.rmpath.exists():
+        if source.exists(page.rmpath):
             changed_pages.append(i)
         page.render_to_painter(pdf_canvas, vector)
         annotations.append(page.get_grouped_annotations())
         progpct = (i + 1) / len(contentdict['pages']) * 25 + 50
         prog_cb(progpct)
     pdf_canvas.save()
+    tmpfh.seek(0)
 
     if abort_func():
-        cleanup()
         return
 
     # This new PDF represents just the notebook. If there was a
     # parent PDF, merge it now.
     if uses_base_pdf and not changed_pages:
-        # Since there is no stroke data, verbatim copy the PDF.
-        # pdfpath.rename(filepath)
-        shutil.copy(pdfpath, filepath)
+        # Since there is no stroke data, just return the PDF data
         prog_cb(100)
-        cleanup()
 
         log.info('exported pdf')
-        return
+        return source.open('{ID}.pdf', 'rb')
 
     # PDF exists, stroke data exists, so mix them together.
     if uses_base_pdf:
-        rmpdfr = PdfReader(tmprmpdf)
-        basepdfr = PdfReader(pdfpath)
+        rmpdfr = PdfReader(tmpfh)
+        basepdfr = PdfReader(source.open('{ID}.pdf', 'rb'))
     else:
-        basepdfr = PdfReader(tmprmpdf)
+        basepdfr = PdfReader(tmpfh)
         # Alias, which is used for annotations and layers.
         rmpdfr = basepdfr
 
@@ -190,7 +201,6 @@ def save_pdf(filepath,  # Output?
 
     for i in range(0, len(basepdfr.pages)):
         if abort_func():
-            cleanup()
             return
 
         def release_progress():
@@ -236,13 +246,12 @@ def save_pdf(filepath,  # Output?
             basepdfr.Root.OCProperties = ocgprop
 
     pdfw = PdfWriter()
-    pdfw.write(filepath, basepdfr)
-    tmprmpdf.unlink()
-
-    # Cleanup
-    cleanup()
+    stream = tempfile.SpooledTemporaryFile(SPOOL_MAX)
+    pdfw.write(stream, basepdfr)
+    stream.seek(0)
 
     log.info('exported pdf')
+    return stream
 
 
 def do_apply_ocg(basepage, rmpage, i, uses_base_pdf, ocgprop, annotations):
@@ -623,50 +632,37 @@ def merge_pages(basepage, rmpage, changed_page):
 
 class DocumentPage:
     # A single page in a document
-    # From local disk!! When making agnostic later, only keep the
-    # document and pagenum args.
     def __init__(self,
-                 #document,
+                 source,
                  doc_contentdict,  # Added
-                 doc_uuid,  # Added
                  pagenum,
-                 archivepath,
-                 #displaydict,
                  pencil_textures=None):
         # Page 0 is the first page!
-        #self.document = document
+        self.source = source
         self.num = pagenum
-        #self.display = displaydict  # Carried from model, but not used?
         self.pencil_textures = pencil_textures
 
         # get page id
-        self.uuid = str(pagenum) #??? doc_contentdict['pages'][pagenum]
+        pid = str(pagenum) #For download; from device: doc_contentdict['pages'][pagenum]
 
-        self.rmpath = Path(
-            archivepath / \
-            Path(doc_uuid) / Path(self.uuid + '.rm'))
+        self.rmpath = f'{{ID}}/{pid}.rm'
 
         # Try to load page metadata
         self.metadict = None
-        self.metafilepath = Path(
-            archivepath / Path(doc_uuid) / \
-            Path(self.uuid + '-metadata.json'))
-        if self.metafilepath.exists():
-            with open(self.metafilepath, 'r') as f:
+        metafilepath = f'{{ID}}/{pid}-metadata.json'
+        if source.exists(metafilepath):
+            with source.open(metafilepath, 'r') as f:
                 self.metadict = json.load(f)
-                f.close()
 
         # Try to load template
         self.template = None
         tmpnamearray = []
-        pagedatapath = Path(
-            archivepath / Path(doc_uuid + '.pagedata'))
-        if pagedatapath.exists():
-            f = open(pagedatapath, 'r')
-            lines = f.read()
+        pagedatapath = '{ID}.pagedata'
+        if source.exists(pagedatapath):
+            with source.open(pagedatapath, 'r') as f:
+                lines = f.read()
             for line in lines.splitlines():
                 tmpnamearray.append(line)
-            f.close()
 
         if tmpnamearray:
             # I have encountered an issue with some PDF files, where the
@@ -697,15 +693,14 @@ class DocumentPage:
     def load_layers(self):
         # Loads layers from the .rm files
 
-        if not self.rmpath.exists():
+        if not self.source.exists(self.rmpath):
             # no layers, obv
             return
 
         # Load reMy version of page layers
         pagelayers = None
-        with open(self.rmpath, 'rb') as f:
+        with self.source.open(self.rmpath, 'rb') as f:
             _, pagelayers = lines.readLines(f)
-            f.close()
 
         # Load layer data
         for i in range(0, len(pagelayers)):
@@ -889,7 +884,31 @@ if __name__ == '__main__':
     vector = True
     #format_ = 'vector' if vector else 'raster'
     format_ = 'reportlab'
+
+    def write_to_output(stream, fn):
+        with open(fn, 'wb') as f:
+            f.write(stream.read())
+
     # Demo
-    save_pdf(f'testing/output-{format_}.pdf', 'testing/samples', 'cb736ad2-b869-4253-979a-dbc5c01a9000', vector, lambda x: print(x))
+    write_to_output(
+        save_pdf(
+            FSSource('testing/samples', 'cb736ad2-b869-4253-979a-dbc5c01a9000'),
+            vector, print
+        ),
+        f'testing/output-{format_}.pdf'
+    )
     # PDF
-    save_pdf(f'testing/output-pdf-{format_}.pdf', 'testing/samples', '67917ebb-3664-4a7c-b243-6db4e10190b2', vector, lambda x: print(x))
+    write_to_output(
+        save_pdf(
+            FSSource('testing/samples', '67917ebb-3664-4a7c-b243-6db4e10190b2'),
+            vector, print
+        ),
+        f'testing/output-pdf-{format_}.pdf'
+    )
+    # Zipped input
+    import zipfile
+    zf = zipfile.ZipFile('testing/samples/Demo.zip')
+    write_to_output(
+        save_pdf(ZipSource(zf), vector, print),
+        f'testing/output-zip-{format_}.pdf'
+    )
