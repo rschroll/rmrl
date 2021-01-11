@@ -121,17 +121,14 @@ def save_pdf(source, vector=True, prog_cb=lambda x: None):
     # ...
 
     # Generate page information
-    contentdict = {}
-    if source.exists('{ID}.content'):
-        with source.open('{ID}.content', 'r') as f:
-            contentdict = json.load(f)
     # If a PDF file was uploaded, but never opened, there may not be
     # a .content file. So, just load a barebones one with a 'pages'
     # key of zero length, so it doesn't break the rest of the
-    # process. This is here, instead of in __init__, because it is
-    # more explainable/straightforward here.
-    if not 'pages' in contentdict:
-        contentdict['pages'] = []
+    # process.
+    pages = []
+    if source.exists('{ID}.content'):
+        with source.open('{ID}.content', 'r') as f:
+            pages = json.load(f).get('pages', [])
 
     # Render each page as a pdf
     tmpfh = tempfile.TemporaryFile()
@@ -143,13 +140,13 @@ def save_pdf(source, vector=True, prog_cb=lambda x: None):
     # iteration so they get released by garbage collector.
     changed_pages = []
     annotations = []
-    for i in range(0, len(contentdict['pages'])):
-        page = DocumentPage(source, contentdict, i)
+    for i in range(0, len(pages)):
+        page = DocumentPage(source, pages[i], i)
         if source.exists(page.rmpath):
             changed_pages.append(i)
         page.render_to_painter(pdf_canvas, vector)
         annotations.append(page.get_grouped_annotations())
-        prog_cb((i + 1) / len(contentdict['pages']) * 50)
+        prog_cb((i + 1) / len(pages) * 50)
     pdf_canvas.save()
     tmpfh.seek(0)
 
@@ -603,18 +600,17 @@ def merge_pages(basepage, rmpage, changed_page):
 
 class DocumentPage:
     # A single page in a document
-    def __init__(self,
-                 source,
-                 doc_contentdict,  # Added
-                 pagenum):
+    def __init__(self, source, pid, pagenum):
         # Page 0 is the first page!
         self.source = source
         self.num = pagenum
 
-        # get page id
-        pid = str(pagenum) #For download; from device: doc_contentdict['pages'][pagenum]
-
+        # On disk, these files are named by a UUID
         self.rmpath = f'{{ID}}/{pid}.rm'
+        if not source.exists(self.rmpath):
+            # From the API, these files are just numbered
+            pid = str(pagenum)
+            self.rmpath = f'{{ID}}/{pid}.rm'
 
         # Try to load page metadata
         self.metadict = None
@@ -625,23 +621,21 @@ class DocumentPage:
 
         # Try to load template
         self.template = None
-        tmpnamearray = []
+        template_names = []
         pagedatapath = '{ID}.pagedata'
         if source.exists(pagedatapath):
             with source.open(pagedatapath, 'r') as f:
-                lines = f.read()
-            for line in lines.splitlines():
-                tmpnamearray.append(line)
+                template_names = f.read().splitlines()
 
-        if tmpnamearray:
+        if template_names:
             # I have encountered an issue with some PDF files, where the
             # rM won't save the page template for later pages. In this
             # case, just take the last-available page template, which
             # is usually 'Blank'.
-            tmpname = tmpnamearray[max(self.num, len(tmpnamearray) - 1)]
-            tmparchivepath = TEMPLATE_PATH / f'{tmpname}.svg'
-            if tmpname != 'Blank' and tmparchivepath.exists():
-                self.template = str(tmparchivepath)
+            template_name = template_names[max(self.num, len(template_names) - 1)]
+            template_path = TEMPLATE_PATH / f'{template_name}.svg'
+            if template_name != 'Blank' and template_path.exists():
+                self.template = str(template_path)
 
         # Load layers
         self.layers = []
@@ -876,4 +870,12 @@ if __name__ == '__main__':
     write_to_output(
         save_pdf(ZipSource(zf), vector, print),
         f'testing/output-zip-{format_}.pdf'
+    )
+    # On disk
+    write_to_output(
+        save_pdf(
+            FSSource('testing/ondisk', 'cb736ad2-b869-4253-979a-dbc5c01a9000'),
+            vector, print
+        ),
+        f'testing/output-disk-{format_}.pdf'
     )
