@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import logging
 import tempfile
 from pathlib import Path
-import io
 import json
 import gc
 import re
@@ -31,7 +30,7 @@ from reportlab.pdfgen import canvas
 from reportlab.graphics import renderPDF
 from svglib.svglib import svg2rlg
 
-from . import lines, pens
+from . import lines, pens, sources
 
 
 log = logging.getLogger(__name__)
@@ -56,51 +55,6 @@ SPOOL_MAX = 10 * 1024 * 1024
 TEMPLATE_PATH = Path('/home/pi/source-rcu-r2020-003/rcu/src/templates')
 
 
-class FSSource:
-
-    def __init__(self, base_dir, doc_id):
-        self.base_dir = Path(base_dir)
-        self.doc_id = doc_id
-
-    def format_name(self, name):
-        return self.base_dir / name.format(ID=self.doc_id)
-
-    def open(self, fn, mode='r'):
-        return open(self.format_name(fn), mode)
-
-    def exists(self, fn):
-        return self.format_name(fn).exists()
-
-
-class ZipSource:
-
-    def __init__(self, zip_file, encoding='utf-8'):
-        self.zip_file = zip_file
-        self.encoding = encoding
-        for fn in self.zip_file.namelist():
-            if fn.endswith('.content'):
-                self.doc_id = fn[:-8]
-                break
-        else:
-            raise FileNotFoundError('Could not find .content file')
-
-    def format_name(self, name):
-        return name.format(ID=self.doc_id)
-
-    def open(self, fn, mode='r'):
-        f = self.zip_file.open(self.format_name(fn), mode.strip('b'))
-        if mode.endswith('b'):
-            return f
-        return io.TextIOWrapper(f, encoding=self.encoding)
-
-    def exists(self, fn):
-        try:
-            self.zip_file.getinfo(self.format_name(fn))
-            return True
-        except KeyError:
-            return False
-
-
 def render(source, vector=True, prog_cb=lambda x: None):
     # Exports the self as a PDF document to disk
 
@@ -110,6 +64,8 @@ def render(source, vector=True, prog_cb=lambda x: None):
     # also provides an opportunity to abort the process. If the callback
     # raises an error, this function will take steps to abort gracefullly
     # and pass the error upwards.
+
+    source = sources.get_source(source)
 
     # If this is using a base PDF, the percentage is calculated
     # differently.
