@@ -19,7 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-import log
+import logging
 import tempfile
 from pathlib import Path
 import io
@@ -37,6 +37,8 @@ from svglib.svglib import svg2rlg
 from model import lines
 from model.pens import *
 
+
+log = logging.getLogger(__name__)
 
 # From rcu.py, with comment
 # Todo: this should be based on the specific RM model
