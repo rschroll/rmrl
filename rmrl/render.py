@@ -34,8 +34,7 @@ from reportlab.pdfgen import canvas
 from reportlab.graphics import renderPDF
 from svglib.svglib import svg2rlg
 
-from model import lines
-from model.pens import *
+from . import lines, pens
 
 
 log = logging.getLogger(__name__)
@@ -105,7 +104,7 @@ class ZipSource:
             return False
 
 
-def save_pdf(source, vector=True, prog_cb=lambda x: None):
+def render(source, vector=True, prog_cb=lambda x: None):
     # Exports the self as a PDF document to disk
 
     # prog_cb will be called with a progress percentage between 0 and
@@ -794,10 +793,10 @@ class DocumentPageLayer:
         for stroke in self.strokes:
             pen, color, unk1, width, unk2, segments = stroke
 
-            penclass = PEN_MAPPING.get(pen)
+            penclass = pens.PEN_MAPPING.get(pen)
             if penclass is None:
                 log.error("Unknown pen code %d" % pen)
-                penclass = GenericPen
+                penclass = pens.GenericPen
 
             qpen = penclass(vector=vector,
                             layer=self,
@@ -838,46 +837,3 @@ class DocumentPageLayer:
         del imgpainter
         del qimage
         gc.collect()
-
-
-if __name__ == '__main__':
-    import sys
-    vector = True
-    #format_ = 'vector' if vector else 'raster'
-    format_ = 'reportlab'
-
-    def write_to_output(stream, fn):
-        with open(fn, 'wb') as f:
-            f.write(stream.read())
-
-    # Demo
-    write_to_output(
-        save_pdf(
-            FSSource('testing/samples', 'cb736ad2-b869-4253-979a-dbc5c01a9000'),
-            vector, print
-        ),
-        f'testing/output-{format_}.pdf'
-    )
-    # PDF
-    write_to_output(
-        save_pdf(
-            FSSource('testing/samples', '67917ebb-3664-4a7c-b243-6db4e10190b2'),
-            vector, print
-        ),
-        f'testing/output-pdf-{format_}.pdf'
-    )
-    # Zipped input
-    import zipfile
-    zf = zipfile.ZipFile('testing/samples/Demo.zip')
-    write_to_output(
-        save_pdf(ZipSource(zf), vector, print),
-        f'testing/output-zip-{format_}.pdf'
-    )
-    # On disk
-    write_to_output(
-        save_pdf(
-            FSSource('testing/ondisk', 'cb736ad2-b869-4253-979a-dbc5c01a9000'),
-            vector, print
-        ),
-        f'testing/output-disk-{format_}.pdf'
-    )
