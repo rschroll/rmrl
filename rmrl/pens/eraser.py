@@ -1,9 +1,6 @@
 '''
-eraser.py
-This is the model for an Eraser QPen.
-
-RCU is a synchronization tool for the reMarkable Tablet.
 Copyright (C) 2020  Davis Remmel
+Copyright 2021 Robert Schroll
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
