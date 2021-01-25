@@ -1,4 +1,4 @@
-from PySide2.QtGui import QImage
+#from PySide2.QtGui import QImage
 from pathlib import Path
 
 class PencilTextures:
@@ -65,4 +65,4 @@ class PencilTextures:
 
 # Load pencil textures (shared for brushes, takes a lot of time
 # because there are many)
-PENCIL_TEXTURES = PencilTextures()
+PENCIL_TEXTURES = None #PencilTextures()
