@@ -103,7 +103,7 @@ following are the major changes:
 
 Trademarks
 ----------
-reMarkable(R) is a registered tradebark of reMarkable AS. rmrl is not
+reMarkable(R) is a registered trademark of reMarkable AS. rmrl is not
 affiliated with, or endorsed by, reMarkable AS. The use of “reMarkable”
 in this work refers to the company’s e-paper tablet product(s).
 
