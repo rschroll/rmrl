@@ -26,10 +26,11 @@ is to do a
 ```bash
 pip install rmrl
 ```
-Alternatively, you should be able to clone this repository and run
+Alternatively, you may clone this repository.  [Poetry](https://python-poetry.org/) is used for development, so once that is installed you can run
 ```bash
-pip install -e .
+poetry install
 ```
+to get a virtual environment all set up.
 
 Usage
 -----
