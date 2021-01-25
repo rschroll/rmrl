@@ -1,9 +1,11 @@
 [tool.poetry]
 name = "rmrl"
-version = "0.1.0"
+version = "0.1.1"
 description = "Render reMarkable documents to PDF"
 authors = ["Robert Schroll <rschroll@gmail.com>"]
 license = "GPLv3"
+repository = "https://github.com/rschroll/rmrl"
+readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.7"
