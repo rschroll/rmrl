@@ -20,7 +20,7 @@ import subprocess
 import sys
 import textwrap
 
-from .constants import TEMPLATE_PATH
+from .constants import TEMPLATE_PATH, VERSION
 
 def main():
     parser = argparse.ArgumentParser(description="Load the templates from a Remarkable device for use with rmrl")
@@ -28,6 +28,7 @@ def main():
         IP address of Remarkable device.  Defaults to the value used when
         plugged in via USB.  Possible values can be found under Settings >
         Help > Copyrights and licenses, under the GPLv3 Compliance section.""")
+    parser.add_argument('--version', action='version', version=VERSION)
     args = parser.parse_args()
 
     print(textwrap.dedent(f"""

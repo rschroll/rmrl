@@ -21,12 +21,14 @@ import sys
 import zipfile
 
 from . import render
+from .constants import VERSION
 from .sources import ZipSource
 
 def main():
     parser = argparse.ArgumentParser(description="Render a PDF file from a Remarkable document.")
     parser.add_argument('input', help="Filename of zip file, or root-level unpacked file of document.  Use '-' to read zip file from stdin.")
     parser.add_argument('output', nargs='?', default='', help="Filename where PDF file should be written.  Omit to write to stdout.")
+    parser.add_argument('--version', action='version', version=VERSION)
     args = parser.parse_args()
 
     source = args.input

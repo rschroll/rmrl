@@ -1,4 +1,5 @@
 from pathlib import Path
+import pkg_resources
 
 from xdg import xdg_data_home
 
@@ -20,3 +21,5 @@ SPOOL_MAX = 10 * 1024 * 1024
 
 # TODO: parameterize
 TEMPLATE_PATH = xdg_data_home() / 'rmrl' / 'templates'
+
+VERSION = pkg_resources.get_distribution('rmrl').version
