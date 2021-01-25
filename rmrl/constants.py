@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from xdg import xdg_data_home
+
 # From rcu.py, with comment
 # Todo: this should be based on the specific RM model
 DISPLAY = {
@@ -17,4 +19,4 @@ PDFWIDTH = DISPLAY['screenwidth'] * PTPERPX
 SPOOL_MAX = 10 * 1024 * 1024
 
 # TODO: parameterize
-TEMPLATE_PATH = Path('/home/pi/source-rcu-r2020-003/rcu/src/templates')
+TEMPLATE_PATH = xdg_data_home() / 'rmrl' / 'templates'
