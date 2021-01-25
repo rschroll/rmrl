@@ -33,16 +33,17 @@ from .constants import PDFHEIGHT, PDFWIDTH, PTPERPX, SPOOL_MAX
 
 log = logging.getLogger(__name__)
 
-def render(source, vector=True, prog_cb=lambda x: None):
+def render(source, *, progress_cb=lambda x: None):
     # Exports the self as a PDF document to disk
 
-    # prog_cb will be called with a progress percentage between 0 and
+    # progress_cb will be called with a progress percentage between 0 and
     # 100.  This percentage calculation is split 50% for the rendering
     # of the lines and 50% merging with the base PDF file.  This callback
     # also provides an opportunity to abort the process. If the callback
     # raises an error, this function will take steps to abort gracefullly
     # and pass the error upwards.
 
+    vector=True  # TODO: Different rendering styles
     source = sources.get_source(source)
 
     # If this is using a base PDF, the percentage is calculated
@@ -78,7 +79,7 @@ def render(source, vector=True, prog_cb=lambda x: None):
             changed_pages.append(i)
         page.render_to_painter(pdf_canvas, vector)
         annotations.append(page.get_grouped_annotations())
-        prog_cb((i + 1) / len(pages) * 50)
+        progress_cb((i + 1) / len(pages) * 50)
     pdf_canvas.save()
     tmpfh.seek(0)
 
@@ -86,7 +87,7 @@ def render(source, vector=True, prog_cb=lambda x: None):
     # parent PDF, merge it now.
     if uses_base_pdf and not changed_pages:
         # Since there is no stroke data, just return the PDF data
-        prog_cb(100)
+        progress_cb(100)
 
         log.info('exported pdf')
         return source.open('{ID}.pdf', 'rb')
@@ -132,7 +133,7 @@ def render(source, vector=True, prog_cb=lambda x: None):
         if uses_base_pdf:
             merge_pages(basepage, rmpage, i in changed_pages)
 
-        prog_cb(((i + 1) / rmpdfr.numPages * 50) + 50)
+        progress_cb(((i + 1) / rmpdfr.numPages * 50) + 50)
 
     # Apply the OCG order. The basepdf may have already had OCGs
     # and so we must not overwrite them. NOTE: there are other
