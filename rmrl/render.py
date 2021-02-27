@@ -411,14 +411,16 @@ def merge_pages(basepage, rmpage, changed_page):
     # ...
 
     # There is a bug here that can be seen with the NH file
+    # reMarkable uses the CropBox if it exists, otherwise
+    # the MediaBox.  (Though it does screw up the offsets
+    # for some combinations of rotations and landscape modes.)
     # It is possible (why?) for a page not to have a
     # MediaBox, so one must be taken from the parent. The
     # rM adds a bit to the width AND the height on this
     # file.
-    bpage_box = basepage.MediaBox
-    if not bpage_box:
-        # Should probably check if the parent has a mediabox
-        bpage_box = basepage.Parent.MediaBox
+    bpage_box = (basepage.CropBox
+                 or basepage.MediaBox
+                 or basepage.Parent.MediaBox)
     bpage_w = float(bpage_box[2]) - float(bpage_box[0])
     bpage_h = float(bpage_box[3]) - float(bpage_box[1])
     # Round because floating point makes it prissy
@@ -426,6 +428,8 @@ def merge_pages(basepage, rmpage, changed_page):
     landscape_bpage = False
     if bpage_w > bpage_h:
         landscape_bpage = True
+    if basepage.Rotate in ('90', '270'):
+        landscape_bpage = not landscape_bpage
 
     # If the base PDF page was really wide, the rM rotates
     # it -90deg (CCW) on the screen, but doesn't actually
@@ -434,17 +438,28 @@ def merge_pages(basepage, rmpage, changed_page):
     # the Web UI export. So, we must actually rotate the rM
     # page 90deg (CW) to fit on these wide pages.
 
+    # Since we create this page, we know there isn't a different
+    # CropBox to worry about.
     rpage_box = rmpage.MediaBox
     rpage_w = float(rpage_box[2]) - float(rpage_box[0])
     rpage_h = float(rpage_box[3]) - float(rpage_box[1])
     rpage_ratio = rpage_w / rpage_h
+
+    # The rmpage picks up the rotation of the base page -- that is,
+    # its own rotation is relative to the basepage.  We don't want
+    # any net rotation, so we rotate it backwards now, so that with
+    # the basepage rotation, it end up upright.
+    rmpage.Rotate = (360 - int(basepage.Rotate)) % 360
+    # But if the page is landscape, reMarkable adds a 90 degree
+    # rotation.
     if landscape_bpage:
-        rmpage.Rotate = 90
+        rmpage.Rotate = (rmpage.Rotate + 90) % 360
         rpage_ratio = rpage_h / rpage_w
 
         # Annotations must be rotated because this rotation
         # statement won't hit until the page merge, and
         # pdfrw is unaware of annotations.
+        # TODO: Test that this works with basepage rotations
         if '/Annots' in rmpage:
             for a, annot in enumerate(rmpage.Annots):
                 rect = annot.Rect
@@ -472,12 +487,12 @@ def merge_pages(basepage, rmpage, changed_page):
         new_width = rpage_ratio * bpage_h
         if landscape_bpage:
             adjust = float(bpage_box[2]) - new_width
-            bpage_box[0] = adjust
+            #bpage_box[0] = adjust #TODO
         else:
             # Portrait documents get pushed to the left, so
             # expand the right side.
             adjust = float(bpage_box[0])
-            bpage_box[2] = new_width + float(bpage_box[0])
+            #bpage_box[2] = new_width + float(bpage_box[0]) #TODO
     elif bpage_ratio > rpage_ratio:
         # Basepage is fatter, so need to expand the height.
         # The basepage should be pushed to the top, which is
@@ -485,7 +500,7 @@ def merge_pages(basepage, rmpage, changed_page):
         # the top is really decreasing the bottom side.
         new_height = (1 / rpage_ratio) * bpage_w
         adjust = float(bpage_box[3]) - new_height
-        bpage_box[1] = adjust
+        #bpage_box[1] = adjust #TODO
 
     # If this wasn't a changed page, don't bother with the
     # following.
@@ -495,20 +510,24 @@ def merge_pages(basepage, rmpage, changed_page):
     # Scale and (if necesssary) rotate the notebook page
     # and overlay it to the basepage. Might have to push
     # it a bit, depending on the direction.
-    #basepage.Rotate = -90
     np = PageMerge(basepage).add(rmpage)
+
+    # Move the overlay page to be based on the coordinates
+    # of the base page CropBox
+    np[1].x = float(bpage_box[0])
+    np[1].y = float(bpage_box[1])
 
     annot_adjust = [0, 0]
 
     if bpage_ratio <= rpage_ratio:
         scale = bpage_h / np[1].h
         np[1].scale(scale)
-        np[1].x = adjust
+        #np[1].x = adjust
         annot_adjust[0] = adjust
     elif bpage_ratio > rpage_ratio:
         scale = bpage_w / np[1].w
         np[1].scale(scale)
-        np[1].y = adjust
+        #np[1].y = adjust
         annot_adjust[1] = adjust
 
     if '/Annots' in rmpage:
