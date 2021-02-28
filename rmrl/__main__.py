@@ -26,6 +26,9 @@ def main():
     parser = argparse.ArgumentParser(description="Render a PDF file from a Remarkable document.")
     parser.add_argument('input', help="Filename of zip file, or root-level unpacked file of document.  Use '-' to read zip file from stdin.")
     parser.add_argument('output', nargs='?', default='', help="Filename where PDF file should be written.  Omit to write to stdout.")
+    parser.add_argument('--alpha', default=0.3, help="Opacity for template background (0 for no background).")
+    parser.add_argument('--no-expand', action='store_true', help="Don't expand pages to margins on device.")
+    parser.add_argument('--only-annotated', action='store_true', help="Only render pages with annotations.")
     parser.add_argument('--version', action='version', version=VERSION)
     args = parser.parse_args()
 
@@ -38,7 +41,10 @@ def main():
     else:
         fout = sys.stdout.buffer
 
-    stream = render(source)
+    stream = render(source,
+                    template_alpha=float(args.alpha),
+                    expand_pages=not args.no_expand,
+                    only_annotated=args.only_annotated)
     fout.write(stream.read())
     fout.close()
     return 0

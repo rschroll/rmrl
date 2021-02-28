@@ -17,19 +17,20 @@ import io
 from pathlib import Path
 import zipfile
 
+__doc__ = """
+A Source should implement two methods:
 
-# A Source should implement two methods:
-#
-# open(filename, mode)
-#    Returns a file handled for the filename, opened in specified mode.
-#
-# exists(filename)
-#    Returns a boolean indicating whether the file exists.
-#
-# In both cases, the filename may include the string `{ID}`, which indicates
-# the Remarkable ID for that particular document (a UUID).  Thus, the caller
-# of these methods does not have to know the ID of a document; the Source is
-# responsible for filling that in appropriately.
+open(filename, mode)
+   Returns a file handled for the filename, opened in specified mode.
+
+exists(filename)
+   Returns a boolean indicating whether the file exists.
+
+In both cases, the filename may include the string `{ID}`, which indicates
+the Remarkable ID for that particular document (a UUID).  Thus, the caller
+of these methods does not have to know the ID of a document; the Source is
+responsible for filling that in appropriately.
+"""
 
 class FSSource:
 

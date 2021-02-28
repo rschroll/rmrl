@@ -36,14 +36,30 @@ def render(source, *,
            expand_pages=True,
            template_alpha=0.3,
            only_annotated=False):
-    # Exports the self as a PDF document to disk
+    """
+    Render a source document as a PDF file.
 
-    # progress_cb will be called with a progress percentage between 0 and
-    # 100.  This percentage calculation is split 50% for the rendering
-    # of the lines and 50% merging with the base PDF file.  This callback
-    # also provides an opportunity to abort the process. If the callback
-    # raises an error, this function will take steps to abort gracefullly
-    # and pass the error upwards.
+    source: The reMarkable document to be rendered.  This may be
+              - A filename or pathlib.Path to a zip file containing the
+                document, such as is provided by the Cloud API.
+              - A filename or pathlib.Path to a root-level file from the
+                document, such as might be copied off the device directly.
+              - An object implementing the Source API.  See rmrl.sources
+                for examples and further documentation.
+    progress_cb: A function which will be called with a progress percentage
+                 between 0 and 100.  The first 50% indicate rendering the
+                 annotations, and the second the merging of these into the
+                 base PDF file.  If this callback raises an error, this
+                 function will abort gracefully and propagate the error up
+                 the stack.
+    expand_pages: Boolean value (default True) indicating whether pages
+                  should be made larger, to reflect the view provided by
+                  the reMarkable device.
+    template_alpha: Opacity of the template backgrounds in notebooks.  0
+                    makes the templates invisible, 1 makes them fully dark.
+    only_annotated: Boolean value (default False) indicating whether only
+                    pages with annotations should be output.
+    """
 
     vector=True  # TODO: Different rendering styles
     source = sources.get_source(source)
@@ -51,9 +67,6 @@ def render(source, *,
     # If this is using a base PDF, the percentage is calculated
     # differently.
     uses_base_pdf = source.exists('{ID}.pdf')
-
-    # Document metadata should already be loaded (from device)
-    # ...
 
     # Generate page information
     # If a PDF file was uploaded, but never opened, there may not be
