@@ -33,7 +33,7 @@ from .constants import PDFHEIGHT, PDFWIDTH, PTPERPX, SPOOL_MAX
 
 log = logging.getLogger(__name__)
 
-def render(source, *, progress_cb=lambda x: None):
+def render(source, *, progress_cb=lambda x: None, expand_pages=True):
     # Exports the self as a PDF document to disk
 
     # progress_cb will be called with a progress percentage between 0 and
@@ -131,7 +131,7 @@ def render(source, *, progress_cb=lambda x: None):
         # just add the annotations and forget about the rest,
         # which are page geometry transformations.
         if uses_base_pdf:
-            merge_pages(basepage, rmpage, i in changed_pages)
+            merge_pages(basepage, rmpage, i in changed_pages, expand_pages)
 
         progress_cb(((i + 1) / rmpdfr.numPages * 50) + 50)
 
@@ -394,7 +394,7 @@ def apply_annotations(rmpage, page_annot, ocgorderinner):
             rmpage.Annots.append(pdf_a)
 
 
-def merge_pages(basepage, rmpage, changed_page):
+def merge_pages(basepage, rmpage, changed_page, expand_pages):
     # The general appraoch is to keep the base PDF. So, all
     # operations must be made upon the basepage. PyPDF2 will
     # keep all those pages' metadata and annotations,
@@ -418,11 +418,11 @@ def merge_pages(basepage, rmpage, changed_page):
     # MediaBox, so one must be taken from the parent. The
     # rM adds a bit to the width AND the height on this
     # file.
-    bpage_box = (basepage.CropBox
-                 or basepage.MediaBox
-                 or basepage.Parent.MediaBox)
-    bpage_w = float(bpage_box[2]) - float(bpage_box[0])
-    bpage_h = float(bpage_box[3]) - float(bpage_box[1])
+    bpage_box = list(map(float, basepage.CropBox
+                                or basepage.MediaBox
+                                or basepage.Parent.MediaBox))
+    bpage_w = bpage_box[2] - bpage_box[0]
+    bpage_h = bpage_box[3] - bpage_box[1]
     # Round because floating point makes it prissy
     bpage_ratio = round(bpage_w / bpage_h * 10000) / 10000
     landscape_bpage = False
@@ -440,10 +440,10 @@ def merge_pages(basepage, rmpage, changed_page):
     # page 90deg (CW) to fit on these wide pages.
 
     # Since we create this page, we know there isn't a different
-    # CropBox to worry about.
-    rpage_box = rmpage.MediaBox
-    rpage_w = float(rpage_box[2]) - float(rpage_box[0])
-    rpage_h = float(rpage_box[3]) - float(rpage_box[1])
+    # CropBox to worry about.  We also know width < height
+    rpage_box = list(map(float, rmpage.MediaBox))
+    rpage_w = rpage_box[2] - rpage_box[0]
+    rpage_h = rpage_box[3] - rpage_box[1]
     rpage_ratio = rpage_w / rpage_h
 
     effective_rotation = int(basepage.Rotate)
@@ -453,30 +453,8 @@ def merge_pages(basepage, rmpage, changed_page):
     # The rmpage picks up the rotation of the base page -- that is,
     # its own rotation is relative to the basepage.  We don't want
     # any net rotation, so we rotate it backwards now, so that with
-    # the basepage rotation, it end up upright.
+    # the basepage rotation, it ends up upright.
     rmpage.Rotate = (360 - effective_rotation) % 360
-
-    if landscape_bpage:
-        # Annotations must be rotated because this rotation
-        # statement won't hit until the page merge, and
-        # pdfrw is unaware of annotations.
-        # TODO: Test that this works with basepage rotations
-        if '/Annots' in rmpage:
-            for a, annot in enumerate(rmpage.Annots):
-                rect = annot.Rect
-                rmpage.Annots[a].Rect = PdfArray([
-                    rect[1],
-                    PDFWIDTH - rect[0],
-                    rect[3],
-                    PDFWIDTH - rect[2]])
-
-
-    # Resize the base page to the notebook page ratio by
-    # adjusting the trimBox. If the basepage was landscape,
-    # the trimbox must expand laterally, because the rM
-    # rotates the page on-screen into portrait. If the
-    # basepage was already portrait, it must expand
-    # laterally.
 
     if effective_rotation in (0, 180):
         flip_base_dims = False
@@ -494,17 +472,17 @@ def merge_pages(basepage, rmpage, changed_page):
             new_width = rpage_ratio * bpage_h
             scale = bpage_h / rpage_h
             if effective_rotation == 0:
-                bpage_box[2] = new_width + float(bpage_box[0])
+                bpage_box[2] = new_width + bpage_box[0]
             else:
-                bpage_box[0] = float(bpage_box[2]) - new_width
+                bpage_box[0] = bpage_box[2] - new_width
         else:
             # Height and width are flipped for the basepage
             new_height = rpage_ratio * bpage_w
             scale = bpage_w / rpage_h
             if effective_rotation == 90:
-                bpage_box[3] = new_height + float(bpage_box[1])
+                bpage_box[3] = new_height + bpage_box[1]
             else:
-                bpage_box[1] = float(bpage_box[3]) - new_height
+                bpage_box[1] = bpage_box[3] - new_height
     else:
         # Basepage is wider, so need to expand the height.
         # Extra space is added at the bottom of the screen.
@@ -512,25 +490,28 @@ def merge_pages(basepage, rmpage, changed_page):
             new_height = 1/rpage_ratio * bpage_w
             scale = bpage_w / rpage_w
             if effective_rotation == 0:
-                bpage_box[1] = float(bpage_box[3]) - new_height
+                bpage_box[1] = bpage_box[3] - new_height
             else:
-                bpage_box[3] = new_height + float(bpage_box[1])
+                bpage_box[3] = new_height + bpage_box[1]
         else:
             # Height and width are flipped for the basepage
             new_width = 1/rpage_ratio * bpage_h
             scale = bpage_h / rpage_w
             if effective_rotation == 90:
-                bpage_box[2] = new_width + float(bpage_box[0])
+                bpage_box[2] = new_width + bpage_box[0]
             else:
-                bpage_box[0] = float(bpage_box[2]) - new_width
-    if float(basepage.CropBox[0]) < float(basepage.MediaBox[0]):
-        basepage.MediaBox[0] = basepage.CropBox[0]
-    if float(basepage.CropBox[1]) < float(basepage.MediaBox[1]):
-        basepage.MediaBox[1] = basepage.CropBox[1]
-    if float(basepage.CropBox[2]) > float(basepage.MediaBox[2]):
-        basepage.MediaBox[2] = basepage.CropBox[2]
-    if float(basepage.CropBox[3]) > float(basepage.MediaBox[3]):
-        basepage.MediaBox[3] = basepage.CropBox[3]
+                bpage_box[0] = bpage_box[2] - new_width
+
+    if expand_pages:
+        # Create a CropBox, whether or not there was one before.
+        basepage.CropBox = bpage_box
+        if not basepage.MediaBox:
+            # Provide a MediaBox, in the odd case where there isn't one.
+            basepage.MediaBox = bpage_box
+        else:
+            # Expand the MediaBox as necessary to include the entire CropBox.
+            for i, op in enumerate((min, min, max, max)):
+                basepage.MediaBox[i] = op(float(basepage.MediaBox[i]), bpage_box[i])
 
     # If this wasn't a changed page, don't bother with the
     # following.
@@ -544,11 +525,26 @@ def merge_pages(basepage, rmpage, changed_page):
 
     # Move the overlay page to be based on the coordinates
     # of the base page CropBox
-    np[1].x = float(bpage_box[0])
-    np[1].y = float(bpage_box[1])
+    np[1].x = bpage_box[0]
+    np[1].y = bpage_box[1]
     np[1].scale(scale)
 
-    annot_adjust = [0, 0]  # TODO
+    #TODO: Test all of these annotations with various rotations
+    # and offsets.
+    if landscape_bpage:
+        # Annotations must be rotated because this rotation
+        # statement won't hit until the page merge, and
+        # pdfrw is unaware of annotations.
+        if '/Annots' in rmpage:
+            for a, annot in enumerate(rmpage.Annots):
+                rect = annot.Rect
+                rmpage.Annots[a].Rect = PdfArray([
+                    rect[1],
+                    PDFWIDTH - rect[0],
+                    rect[3],
+                    PDFWIDTH - rect[2]])
+
+    annot_adjust = [0, 0]
 
     if '/Annots' in rmpage:
         for a, annot in enumerate(rmpage.Annots):
