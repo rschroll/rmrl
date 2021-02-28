@@ -36,7 +36,8 @@ log = logging.getLogger(__name__)
 def render(source, *,
            progress_cb=lambda x: None,
            expand_pages=True,
-           template_alpha=0.3):
+           template_alpha=0.3,
+           only_annotated=False):
     # Exports the self as a PDF document to disk
 
     # progress_cb will be called with a progress percentage between 0 and
@@ -149,9 +150,16 @@ def render(source, *,
         else:
             basepdfr.Root.OCProperties = ocgprop
 
-    pdfw = PdfWriter()
     stream = tempfile.SpooledTemporaryFile(SPOOL_MAX)
-    pdfw.write(stream, basepdfr)
+    pdfw = PdfWriter(stream)
+    if not only_annotated:
+        # We are writing out everything, so we can take this shortcut:
+        pdfw.write(trailer=basepdfr)
+    else:
+        for i, page in enumerate(basepdfr.pages):
+            if i in changed_pages:
+                pdfw.addpage(page)
+        pdfw.write()
     stream.seek(0)
 
     log.info('exported pdf')
