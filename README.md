@@ -16,8 +16,11 @@ dpi.
 [![reMarkable](demo/app.png)](demo/app.png) | [![rmrl](demo/rmrl.png)](demo/rmrl.png)
 
 The biggest differences are the lack of texture in the pencils and paintbrush,
-which we hope to address in the future.  The highlight color is also different,
-but we feel the default color is too subtle.
+which we hope to address in the future.  Two differences are intentional:
+- The highlight color is more saturated, since we feel the default color is
+  too subtle.
+- The grid lines from the template are less saturated, to better reflect the
+  appearance on the device.  This is configurable.
 
 Installation
 ------------
