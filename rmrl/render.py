@@ -33,7 +33,10 @@ from .constants import PDFHEIGHT, PDFWIDTH, PTPERPX, SPOOL_MAX
 
 log = logging.getLogger(__name__)
 
-def render(source, *, progress_cb=lambda x: None, expand_pages=True):
+def render(source, *,
+           progress_cb=lambda x: None,
+           expand_pages=True,
+           template_alpha=0.3):
     # Exports the self as a PDF document to disk
 
     # progress_cb will be called with a progress percentage between 0 and
@@ -77,7 +80,7 @@ def render(source, *, progress_cb=lambda x: None, expand_pages=True):
         page = document.DocumentPage(source, pages[i], i)
         if source.exists(page.rmpath):
             changed_pages.append(i)
-        page.render_to_painter(pdf_canvas, vector)
+        page.render_to_painter(pdf_canvas, vector, template_alpha)
         annotations.append(page.get_grouped_annotations())
         progress_cb((i + 1) / len(pages) * 50)
     pdf_canvas.save()

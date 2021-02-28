@@ -109,12 +109,19 @@ class DocumentPage:
             layer.strokes = layerstrokes
             self.layers.append(layer)
 
-    def render_to_painter(self, canvas, vector):
+    def render_to_painter(self, canvas, vector, template_alpha):
         # Render template layer
         if self.template:
-            background = svg2rlg(self.template)
-            background.scale(PDFWIDTH / background.width, PDFWIDTH / background.width)
-            renderPDF.draw(background, canvas, 0, 0)
+            if template_alpha > 0:
+                background = svg2rlg(self.template)
+                background.scale(PDFWIDTH / background.width, PDFWIDTH / background.width)
+                renderPDF.draw(background, canvas, 0, 0)
+                if template_alpha < 1:
+                    canvas.saveState()
+                    canvas.setFillColorRGB(1., 1., 1.)
+                    canvas.setFillAlpha(1 - template_alpha)
+                    canvas.rect(0, 0, PDFWIDTH, PDFHEIGHT, fill=True, stroke=False)
+                    canvas.restoreState()
             # Bitmaps are rendered into the PDF as XObjects, which are
             # easy to pick out for layers. Vectors will render
             # everything inline, and so we need to add a 'magic point'
