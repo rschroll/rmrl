@@ -421,6 +421,13 @@ def merge_pages(basepage, rmpage, changed_page, expand_pages):
     bpage_box = list(map(float, basepage.CropBox
                                 or basepage.MediaBox
                                 or basepage.Parent.MediaBox))
+
+    # Fix any malformed PDF that has a CropBox extending outside of
+    # the MediaBox, by limiting the area to the intersection.
+    if basepage.MediaBox:
+        for i, op in enumerate((max, max, min, min)):
+            bpage_box[i] = op(float(basepage.MediaBox[i]), bpage_box[i])
+
     bpage_w = bpage_box[2] - bpage_box[0]
     bpage_h = bpage_box[3] - bpage_box[1]
     # Round because floating point makes it prissy
