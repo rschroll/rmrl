@@ -428,6 +428,7 @@ def merge_pages(basepage, rmpage, changed_page):
     landscape_bpage = False
     if bpage_w > bpage_h:
         landscape_bpage = True
+        bpage_ratio = 1 / bpage_ratio # <= 1 always
     if basepage.Rotate in ('90', '270'):
         landscape_bpage = not landscape_bpage
 
@@ -445,17 +446,17 @@ def merge_pages(basepage, rmpage, changed_page):
     rpage_h = float(rpage_box[3]) - float(rpage_box[1])
     rpage_ratio = rpage_w / rpage_h
 
+    effective_rotation = int(basepage.Rotate)
+    # If the page is landscape, reMarkable adds a -90 degree rotation.
+    if landscape_bpage:
+        effective_rotation = (effective_rotation + 270) % 360
     # The rmpage picks up the rotation of the base page -- that is,
     # its own rotation is relative to the basepage.  We don't want
     # any net rotation, so we rotate it backwards now, so that with
     # the basepage rotation, it end up upright.
-    rmpage.Rotate = (360 - int(basepage.Rotate)) % 360
-    # But if the page is landscape, reMarkable adds a 90 degree
-    # rotation.
-    if landscape_bpage:
-        rmpage.Rotate = (rmpage.Rotate + 90) % 360
-        rpage_ratio = rpage_h / rpage_w
+    rmpage.Rotate = (360 - effective_rotation) % 360
 
+    if landscape_bpage:
         # Annotations must be rotated because this rotation
         # statement won't hit until the page merge, and
         # pdfrw is unaware of annotations.
@@ -477,30 +478,59 @@ def merge_pages(basepage, rmpage, changed_page):
     # basepage was already portrait, it must expand
     # laterally.
 
-    adjust = 0
+    if effective_rotation in (0, 180):
+        flip_base_dims = False
+    elif effective_rotation in (90, 270):
+        flip_base_dims = True
+    else:
+        assert False, f"Unexpected rotation: {effective_rotation}"
+
     if bpage_ratio <= rpage_ratio:
-        # Basepage is taller, so need to expand the width.
-        # The basepage should be pushed to the right, which
-        # is also the top of the rM in portrait mode. A
-        # push to the right is really just decreasing the
-        # left side.
-        new_width = rpage_ratio * bpage_h
-        if landscape_bpage:
-            adjust = float(bpage_box[2]) - new_width
-            #bpage_box[0] = adjust #TODO
+        # These ratios < 1, so this indicates the basepage is more
+        # narrow, and thus we need to extend the width.  Extra space
+        # is added to the right of the screen, but that ends up being
+        # a different page edge, depending on rotation.
+        if not flip_base_dims:
+            new_width = rpage_ratio * bpage_h
+            scale = bpage_h / rpage_h
+            if effective_rotation == 0:
+                bpage_box[2] = new_width + float(bpage_box[0])
+            else:
+                bpage_box[0] = float(bpage_box[2]) - new_width
         else:
-            # Portrait documents get pushed to the left, so
-            # expand the right side.
-            adjust = float(bpage_box[0])
-            #bpage_box[2] = new_width + float(bpage_box[0]) #TODO
-    elif bpage_ratio > rpage_ratio:
-        # Basepage is fatter, so need to expand the height.
-        # The basepage should be pushed to the top, which is
-        # also the top of the rM in portrait mode. A push to
-        # the top is really decreasing the bottom side.
-        new_height = (1 / rpage_ratio) * bpage_w
-        adjust = float(bpage_box[3]) - new_height
-        #bpage_box[1] = adjust #TODO
+            # Height and width are flipped for the basepage
+            new_height = rpage_ratio * bpage_w
+            scale = bpage_w / rpage_h
+            if effective_rotation == 90:
+                bpage_box[3] = new_height + float(bpage_box[1])
+            else:
+                bpage_box[1] = float(bpage_box[3]) - new_height
+    else:
+        # Basepage is wider, so need to expand the height.
+        # Extra space is added at the bottom of the screen.
+        if not flip_base_dims:
+            new_height = 1/rpage_ratio * bpage_w
+            scale = bpage_w / rpage_w
+            if effective_rotation == 0:
+                bpage_box[1] = float(bpage_box[3]) - new_height
+            else:
+                bpage_box[3] = new_height + float(bpage_box[1])
+        else:
+            # Height and width are flipped for the basepage
+            new_width = 1/rpage_ratio * bpage_h
+            scale = bpage_h / rpage_w
+            if effective_rotation == 90:
+                bpage_box[2] = new_width + float(bpage_box[0])
+            else:
+                bpage_box[0] = float(bpage_box[2]) - new_width
+    if float(basepage.CropBox[0]) < float(basepage.MediaBox[0]):
+        basepage.MediaBox[0] = basepage.CropBox[0]
+    if float(basepage.CropBox[1]) < float(basepage.MediaBox[1]):
+        basepage.MediaBox[1] = basepage.CropBox[1]
+    if float(basepage.CropBox[2]) > float(basepage.MediaBox[2]):
+        basepage.MediaBox[2] = basepage.CropBox[2]
+    if float(basepage.CropBox[3]) > float(basepage.MediaBox[3]):
+        basepage.MediaBox[3] = basepage.CropBox[3]
 
     # If this wasn't a changed page, don't bother with the
     # following.
@@ -516,19 +546,9 @@ def merge_pages(basepage, rmpage, changed_page):
     # of the base page CropBox
     np[1].x = float(bpage_box[0])
     np[1].y = float(bpage_box[1])
+    np[1].scale(scale)
 
-    annot_adjust = [0, 0]
-
-    if bpage_ratio <= rpage_ratio:
-        scale = bpage_h / np[1].h
-        np[1].scale(scale)
-        #np[1].x = adjust
-        annot_adjust[0] = adjust
-    elif bpage_ratio > rpage_ratio:
-        scale = bpage_w / np[1].w
-        np[1].scale(scale)
-        #np[1].y = adjust
-        annot_adjust[1] = adjust
+    annot_adjust = [0, 0]  # TODO
 
     if '/Annots' in rmpage:
         for a, annot in enumerate(rmpage.Annots):
