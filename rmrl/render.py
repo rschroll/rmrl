@@ -434,8 +434,7 @@ def merge_pages(basepage, rmpage, changed_page, expand_pages):
 
     # There is a bug here that can be seen with the NH file
     # reMarkable uses the CropBox if it exists, otherwise
-    # the MediaBox.  (Though it does screw up the offsets
-    # for some combinations of rotations and landscape modes.)
+    # the MediaBox.
     # It is possible (why?) for a page not to have a
     # MediaBox, so one must be taken from the parent. The
     # rM adds a bit to the width AND the height on this
@@ -475,7 +474,7 @@ def merge_pages(basepage, rmpage, changed_page, expand_pages):
     rpage_h = rpage_box[3] - rpage_box[1]
     rpage_ratio = rpage_w / rpage_h
 
-    effective_rotation = int(basepage.Rotate)
+    effective_rotation = int(basepage.Rotate or 0)
     # If the page is landscape, reMarkable adds a -90 degree rotation.
     if landscape_bpage:
         effective_rotation = (effective_rotation + 270) % 360
