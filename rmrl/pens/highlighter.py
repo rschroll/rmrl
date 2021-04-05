@@ -15,12 +15,15 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from .generic import GenericPen
+from reportlab.graphics.shapes import Rect
+from reportlab.pdfgen.pathobject import PDFPathObject
+from ..annotation import Annotation, Point, Rect, QuadPoints
 
 class HighlighterPen(GenericPen):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.layer = kwargs.get('layer')
-        self.annotate = False #TODO bool(int(QSettings().value(
+        self.annotate = True#False #TODO bool(int(QSettings().value(
         #    'pane/notebooks/export_pdf_annotate')))
 
     def paint_stroke(self, canvas, stroke):
@@ -28,25 +31,47 @@ class HighlighterPen(GenericPen):
         canvas.setLineCap(2)  # Square
         canvas.setLineJoin(1)  # Round
         #canvas.setDash ?? for solid line
-        canvas.setStrokeColor((1.000, 0.914, 0.290), alpha=0.392)
+        yellow = (1.000, 0.914, 0.290)
+        canvas.setStrokeColor(yellow, alpha=0.392)
         canvas.setLineWidth(stroke.width)
 
         path = canvas.beginPath()
         path.moveTo(stroke.segments[0].x, stroke.segments[0].y)
+
+        x0 = stroke.segments[0].x
+        y0 = stroke.segments[0].y
+
+        ll = Point(x0, y0)
+        ur = Point(x0, y0)
+
         for segment in stroke.segments[1:]:
             path.lineTo(segment.x, segment.y)
-        canvas.drawPath(path, stroke=1, fill=0)
-        canvas.restoreState()
+
+            # Do some basic vector math to rotate the line width
+            # perpendicular to this segment
+
+            x1 = segment.x
+            y1 = segment.y
+            width = segment.width
+
+            l = [x1-x0, y1-y0]
+            v0 = -l[1]/l[0] 
+            scale = (1+v0**2)**0.5
+            orthogonal = [v0/scale, 1/scale]
+
+            xmin = x0-width/2*orthogonal[0]
+            ymin = y0-width/2*orthogonal[1]
+            xmax = x1+width/2*orthogonal[0]
+            ymax = y1+width/2*orthogonal[1] 
+
+            ll = Point(min(ll.x, xmin), min(ll.y, ymin))
+            ur = Point(max(ur.x, xmax), max(ur.y, ymax))
+
+            x0 = x1
+            y0 = y1 
 
         if self.annotate:
-            assert False
-            # Create outline of the path. Annotations that are close to
-            # each other get groups. This is determined by overlapping
-            # paths. In order to fuzz this, we'll double the normal
-            # width and extend the end caps.
-            self.setWidthF(self.widthF() * 2)
-            self.setCapStyle(Qt.SquareCap)
-            opath = QPainterPathStroker(self).createStroke(path)
-            # The annotation type is carried all the way through. This
-            # is the type specified in the PDF spec.
-            self.layer.annot_paths.append(('Highlight', opath))
+            self.layer.annot_paths.append(Annotation("Highlight", Rect(ll, ur)))
+
+        canvas.drawPath(path, stroke=1, fill=0)
+        canvas.restoreState()

@@ -24,6 +24,7 @@ from svglib.svglib import svg2rlg
 from . import lines, pens
 from .constants import DISPLAY, PDFHEIGHT, PDFWIDTH, PTPERPX, TEMPLATE_PATH
 
+from typing import List, Tuple
 
 log = logging.getLogger(__name__)
 
@@ -172,8 +173,8 @@ class DocumentPageLayer:
         # PDF layers are ever implemented.
         self.annot_paths = []
 
-    def get_grouped_annotations(self):
-        # return: (LayerName, [(AnnotType, minX, minY, maxX, maxY)])
+    def get_grouped_annotations(self) -> Tuple[str, list]:
+        # return: (LayerName, [Annotations])
 
         # Compare all the annot_paths to each other. If any overlap,
         # they will be grouped together. This is done recursively.
@@ -181,18 +182,18 @@ class DocumentPageLayer:
             newset = []
 
             for p in pathset:
-                annotype = p[0]
-                path = p[1]
+                annotype = p.annotype
+                #path = p[1] #returns (xmin, ymin, xmax, ymax)
                 did_fit = False
                 for i, g in enumerate(newset):
-                    gannotype = g[0]
-                    group = g[1]
+                    gannotype = g.annotype
+                    #group = g[1]
                     # Only compare annotations of the same type
                     if gannotype != annotype:
                         continue
-                    if path.intersects(group):
+                    if p.intersects(g):
                         did_fit = True
-                        newset[i] = (annotype, group.united(path))
+                        newset[i] = g.united(p) #left off here, need to build united and quadpoints
                         break
                 if did_fit:
                     continue
@@ -207,22 +208,7 @@ class DocumentPageLayer:
                 return newset
 
         grouped = grouping_func(self.annot_paths)
-
-        # Get the bounding rect of each group, which sets the PDF
-        # annotation geometry.
-        annot_rects = []
-        for p in grouped:
-            annotype = p[0]
-            path = p[1]
-            rect = path.boundingRect()
-            annot = (annotype,
-                     float(rect.x()),
-                     float(rect.y()),
-                     float(rect.x() + rect.width()),
-                     float(rect.y() + rect.height()))
-            annot_rects.append(annot)
-
-        return (self.name, annot_rects)
+        return (self.name, grouped)
 
     def paint_strokes(self, canvas, vector):
         for stroke in self.strokes:

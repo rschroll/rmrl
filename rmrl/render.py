@@ -27,6 +27,7 @@ from reportlab.pdfgen import canvas
 
 from . import document, sources
 from .constants import PDFHEIGHT, PDFWIDTH, PTPERPX, SPOOL_MAX
+from typing import Tuple, List
 
 
 log = logging.getLogger(__name__)
@@ -87,7 +88,7 @@ def render(source, *,
     # about 500 pages could use up to 3 GB of RAM. Create them by
     # iteration so they get released by garbage collector.
     changed_pages = []
-    annotations = []
+    annotations = [] # [pages[layers[(layer, [Annotations])]]]
     for i in range(0, len(pages)):
         page = document.DocumentPage(source, pages[i], i)
         if source.exists(page.rmpath):
@@ -388,23 +389,36 @@ def do_apply_ocg(basepage, rmpage, i, uses_base_pdf, ocgprop, annotations):
 
     return ocgorderinner
 
+def invert_coords(point) -> Tuple[float]:
+    print(point)
+    x = (point.x * PTPERPX)
+    y = PDFHEIGHT - (point.y * PTPERPX)
+    return (x, y)
 
 def apply_annotations(rmpage, page_annot, ocgorderinner):
+    # page_annot = layers[(layer, [Annotations])]
     for k, layer_a in enumerate(page_annot):
+        # layer_a = (layer, [Annotations])
         layerannots = layer_a[1]
         for a in layerannots:
             # PDF origin is in bottom-left, so invert all
             # y-coordinates.
-            author = 'RCU' #self.model.device_info['rcuname']
+            author = 'reMarkable' #self.model.device_info['rcuname']
+
+            x1, y1 = invert_coords(a.rect.ll)
+            x2, y2 = invert_coords(a.rect.ur)
+
+            w = x2-x1
+            h = y1-y2
+            print(a.quadpoints.points)
+            qp = [c for p in map(invert_coords, a.quadpoints.points) for c in p]
+            
             pdf_a = PdfDict(Type=PdfName('Annot'),
-                            Rect=PdfArray([
-                                (a[1] * PTPERPX),
-                                PDFHEIGHT - (a[2] * PTPERPX),
-                                (a[3] * PTPERPX),
-                                PDFHEIGHT - (a[4] * PTPERPX)]),
+                            Rect=PdfArray([x1, y1, x2, y2]),
+                            QuadPoints=PdfArray(qp),
                             T=author,
                             ANN='pdfmark',
-                            Subtype=PdfName(a[0]),
+                            Subtype=PdfName(a.annotype),
                             P=rmpage)
             # Set to indirect because it makes a cleaner PDF
             # output.
@@ -566,23 +580,22 @@ def merge_pages(basepage, rmpage, changed_page, expand_pages):
         if '/Annots' in rmpage:
             for a, annot in enumerate(rmpage.Annots):
                 rect = annot.Rect
-                rmpage.Annots[a].Rect = PdfArray([
-                    rect[1],
-                    PDFWIDTH - rect[0],
-                    rect[3],
-                    PDFWIDTH - rect[2]])
+                rmpage.Annots[a].Rect = PdfArray(rotate_annot_points(rect))
+                
+                qp = annot.QuadPoints
+                rmpage.Annots[a].QuadPoints = PdfArray(rotate_annot_points(qp))
 
     annot_adjust = [0, 0]
 
     if '/Annots' in rmpage:
         for a, annot in enumerate(rmpage.Annots):
             rect = annot.Rect
-            newrect = PdfArray([
-                rect[0] * scale + annot_adjust[0],
-                rect[1] * scale + annot_adjust[1],
-                rect[2] * scale + annot_adjust[0],
-                rect[3] * scale + annot_adjust[1]])
+            newrect = PdfArray(scale_annot_points(rect, scale, annot_adjust))
             rmpage.Annots[a].Rect = newrect
+
+            qp = annot.QuadPoints
+            newqp = PdfArray(scale_annot_points(qp, scale, annot_adjust))
+            rmpage.Annots[a].QuadPoints = newqp
 
     # Gives the basepage the rmpage as a new object
     np.render()
@@ -592,3 +605,18 @@ def merge_pages(basepage, rmpage, changed_page, expand_pages):
         if not '/Annots' in basepage:
             basepage.Annots = PdfArray()
         basepage.Annots += rmpage.Annots
+
+def rotate_annot_points(points: list) -> list:
+    rotated = []
+    for n in range(0,len(points),2):
+        rotated.append(points[n+1])
+        rotated.append(PDFWIDTH-points[n])
+
+    return rotated
+
+def scale_annot_points(points: list, scale:float, adjust: list) -> list:
+    scaled = []
+    for i, p in enumerate(points):
+        scaled.append(p*scale + adjust[i%2])
+        
+    return scaled
