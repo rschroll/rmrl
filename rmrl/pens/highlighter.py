@@ -55,9 +55,12 @@ class HighlighterPen(GenericPen):
             width = segment.width
 
             l = [x1-x0, y1-y0]
-            v0 = -l[1]/l[0] 
-            scale = (1+v0**2)**0.5
-            orthogonal = [v0/scale, 1/scale]
+            if l[0] == 0:
+                orthogonal = [1, 0]
+            else:
+                v0 = -l[1]/l[0] 
+                scale = (1+v0**2)**0.5
+                orthogonal = [v0/scale, 1/scale]
 
             xmin = x0-width/2*orthogonal[0]
             ymin = y0-width/2*orthogonal[1]

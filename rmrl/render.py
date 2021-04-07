@@ -390,7 +390,6 @@ def do_apply_ocg(basepage, rmpage, i, uses_base_pdf, ocgprop, annotations):
     return ocgorderinner
 
 def invert_coords(point) -> Tuple[float]:
-    print(point)
     x = (point.x * PTPERPX)
     y = PDFHEIGHT - (point.y * PTPERPX)
     return (x, y)
@@ -410,7 +409,6 @@ def apply_annotations(rmpage, page_annot, ocgorderinner):
 
             w = x2-x1
             h = y1-y2
-            print(a.quadpoints.points)
             qp = [c for p in map(invert_coords, a.quadpoints.points) for c in p]
             
             pdf_a = PdfDict(Type=PdfName('Annot'),
@@ -505,6 +503,8 @@ def merge_pages(basepage, rmpage, changed_page, expand_pages):
     else:
         assert False, f"Unexpected rotation: {effective_rotation}"
 
+    annot_adjust = [0, 0]
+
     if bpage_ratio <= rpage_ratio:
         # These ratios < 1, so this indicates the basepage is more
         # narrow, and thus we need to extend the width.  Extra space
@@ -521,6 +521,9 @@ def merge_pages(basepage, rmpage, changed_page, expand_pages):
             # Height and width are flipped for the basepage
             new_height = rpage_ratio * bpage_w
             scale = bpage_w / rpage_h
+            # Not needed in the x-dim b/c extra space is added to the 
+            # right side, which doesn't impact alignment
+            annot_adjust[1] = bpage_box[3] - new_height 
             if effective_rotation == 90:
                 bpage_box[3] = new_height + bpage_box[1]
             else:
@@ -531,6 +534,7 @@ def merge_pages(basepage, rmpage, changed_page, expand_pages):
         if not flip_base_dims:
             new_height = 1/rpage_ratio * bpage_w
             scale = bpage_w / rpage_w
+            annot_adjust[1] = bpage_box[3] - new_height
             if effective_rotation == 0:
                 bpage_box[1] = bpage_box[3] - new_height
             else:
@@ -585,7 +589,6 @@ def merge_pages(basepage, rmpage, changed_page, expand_pages):
                 qp = annot.QuadPoints
                 rmpage.Annots[a].QuadPoints = PdfArray(rotate_annot_points(qp))
 
-    annot_adjust = [0, 0]
 
     if '/Annots' in rmpage:
         for a, annot in enumerate(rmpage.Annots):
