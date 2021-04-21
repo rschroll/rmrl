@@ -107,14 +107,16 @@ class Annotation():
     annotype: str
     rect: Rect
     quadpoints: QuadPoints
+    contents: str
 
-    def __init__(self, annotype: str, rect: Rect, quadpoints: list = None):
+    def __init__(self, annotype: str, rect: Rect, quadpoints: list = None, contents: str = ""):
         self.annotype = annotype
         self.rect = rect
         if quadpoints:
             self.quadpoints = quadpoints
         else:
             self.quadpoints = QuadPoints.fromRect(rect)
+        self.contents = contents
 
     def united(self, annot: Annotation) -> Annotation:
         if self.annotype != annot.annotype:
@@ -122,7 +124,18 @@ class Annotation():
         
         return Annotation(self.annotype, 
                             self.rect.union(annot.rect), 
-                            self.quadpoints.append(annot.quadpoints))
+                            self.quadpoints.append(annot.quadpoints),
+                            self.contents + annot.contents)
+
+    
+    @staticmethod
+    def union(annotA: Annotation, annotB: Annotation) -> Annotation:
+        if annotA is None:
+            return annotB
+        elif annotB is None:
+            return annotA
+        else:
+            return annotA.united(annotB)
 
     def intersects(self, annot: Annotation) -> bool:
         return self.rect.intersects(annot.rect)

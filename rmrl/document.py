@@ -23,6 +23,7 @@ from svglib.svglib import svg2rlg
 
 from . import lines, pens
 from .constants import DISPLAY, PDFHEIGHT, PDFWIDTH, PTPERPX, TEMPLATE_PATH
+from .annotation import Annotation, Rect, Point
 
 from typing import List, Tuple
 
@@ -34,6 +35,12 @@ class DocumentPage:
         # Page 0 is the first page!
         self.source = source
         self.num = pagenum
+
+        self.highlights = None
+        highlightspath = f'{{ID}}.highlights/{pid}.json'
+        if source.exists(highlightspath):
+            with source.open(highlightspath, 'r') as f:
+                self.highlights = json.load(f)["highlights"]
 
         # On disk, these files are named by a UUID
         self.rmpath = f'{{ID}}/{pid}.rm'
@@ -72,15 +79,37 @@ class DocumentPage:
         self.load_layers()
 
     def get_grouped_annotations(self):
-        # Return the annotations grouped by proximity. If they are
-        # within a distance of each other, count them as a single
-        # annotation.
-
-        # Annotations should be delivered in an array, where each
-        # index is a tuple (LayerName,
         annotations = []
-        for layer in self.layers:
-            annotations.append(layer.get_grouped_annotations())
+        if self.highlights is None: return []
+
+        for h in self.highlights:
+            note = None
+            cursor = -1
+            for stroke in h:
+                log.debug(stroke)
+                rect = None
+                for r in stroke["rects"]: # I guess in theory there could be more than one? 
+                    ll = Point(r["x"], r["y"])
+                    ur = Point(r["x"]+r["width"], r["y"]+r["height"])
+                    if rect: rect = rect.union(Rect(ll,ur))
+                    else: rect = Rect(ll, ur)
+                
+
+                contents = stroke["text"] + " "
+                newnote = Annotation("Highlight", rect, contents=contents)
+
+                if cursor > 0 and (stroke["start"] - cursor > 10): # sometimes there are small gaps due to whitespace?
+                    # For now, treat non-continuous highlights as separate notes
+                    annotations.append(note)
+                    note = newnote
+                else:
+                    note = Annotation.union(note, newnote)
+
+                cursor = stroke["start"]+stroke["length"]
+                    
+            if note:
+                annotations.append(note)
+
         return annotations
 
     def load_layers(self):
@@ -172,43 +201,6 @@ class DocumentPageLayer:
         # Store PDF annotations with the layer, in case actual
         # PDF layers are ever implemented.
         self.annot_paths = []
-
-    def get_grouped_annotations(self) -> Tuple[str, list]:
-        # return: (LayerName, [Annotations])
-
-        # Compare all the annot_paths to each other. If any overlap,
-        # they will be grouped together. This is done recursively.
-        def grouping_func(pathset):
-            newset = []
-
-            for p in pathset:
-                annotype = p.annotype
-                #path = p[1] #returns (xmin, ymin, xmax, ymax)
-                did_fit = False
-                for i, g in enumerate(newset):
-                    gannotype = g.annotype
-                    #group = g[1]
-                    # Only compare annotations of the same type
-                    if gannotype != annotype:
-                        continue
-                    if p.intersects(g):
-                        did_fit = True
-                        newset[i] = g.united(p) #left off here, need to build united and quadpoints
-                        break
-                if did_fit:
-                    continue
-                # Didn't fit, so place into a new group
-                newset.append(p)
-
-            if len(newset) != len(pathset):
-                # Might have stuff left to group
-                return grouping_func(newset)
-            else:
-                # Nothing was grouped, so done
-                return newset
-
-        grouped = grouping_func(self.annot_paths)
-        return (self.name, grouped)
 
     def paint_strokes(self, canvas, vector):
         for stroke in self.strokes:

@@ -19,6 +19,9 @@ from reportlab.graphics.shapes import Rect
 from reportlab.pdfgen.pathobject import PDFPathObject
 from ..annotation import Annotation, Point, Rect, QuadPoints
 
+# In software version 2.7, reMarkable phased out the highlighter pen in favor
+# of a separate .highlights file. This code is likely obsolete and can be removed
+# once we are confident this change is stable
 class HighlighterPen(GenericPen):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
