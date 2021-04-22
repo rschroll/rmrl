@@ -15,6 +15,7 @@
 
 import argparse
 import io
+import re
 import sys
 import zipfile
 
@@ -29,8 +30,15 @@ def main():
     parser.add_argument('--alpha', default=0.3, help="Opacity for template background (0 for no background).")
     parser.add_argument('--no-expand', action='store_true', help="Don't expand pages to margins on device.")
     parser.add_argument('--only-annotated', action='store_true', help="Only render pages with annotations.")
+    parser.add_argument('--black', default='#000000', help="Color for \"black\" pen, in hex notation (#RRGGBB).")
+    parser.add_argument('--white', default='#FFFFFF', help="Color for \"white\" pen, in hex notation (#RRGGBB).")
     parser.add_argument('--version', action='version', version=VERSION)
     args = parser.parse_args()
+
+    for color, value in [('White', args.white), ('Black', args.black)]:
+        if re.search(r'^#[0-9a-f]{6}$', value, re.I) is None:
+            print("{} color is incorrectly formatted.".format(color), file=sys.stderr)
+            return 1
 
     source = args.input
     if source == '-':
@@ -44,10 +52,18 @@ def main():
     stream = render(source,
                     template_alpha=float(args.alpha),
                     expand_pages=not args.no_expand,
-                    only_annotated=args.only_annotated)
+                    only_annotated=args.only_annotated,
+                    black=parse_color(args.black),
+                    white=parse_color(args.white))
     fout.write(stream.read())
     fout.close()
     return 0
 
+def parse_color(hex_string):
+    color_int = int(hex_string[1:], 16)
+    return (color_int // 65536 / 255,
+            color_int // 256 % 256 / 255,
+            color_int % 256 / 255)
+    
 if __name__ == '__main__':
     sys.exit(main())

@@ -35,7 +35,9 @@ def render(source, *,
            progress_cb=lambda x: None,
            expand_pages=True,
            template_alpha=0.3,
-           only_annotated=False):
+           only_annotated=False,
+           black=(0, 0, 0),
+           white=(1, 1, 1)):
     """
     Render a source document as a PDF file.
 
@@ -59,6 +61,10 @@ def render(source, *,
                     makes the templates invisible, 1 makes them fully dark.
     only_annotated: Boolean value (default False) indicating whether only
                     pages with annotations should be output.
+    black: A tuple of three values (red, green, and blue; 0.0-1.0) giving
+           the color to use as "black" in the document.  Default: (0, 0, 0)
+    white: A tuple of three values (red, green, and blue; 0.0-1.0) giving
+            the color to use as "white" in the document.  Default: (1, 1, 1)
     """
 
     vector=True  # TODO: Different rendering styles
@@ -89,7 +95,7 @@ def render(source, *,
     changed_pages = []
     annotations = []
     for i in range(0, len(pages)):
-        page = document.DocumentPage(source, pages[i], i)
+        page = document.DocumentPage(source, pages[i], i, black=black, white=white)
         if source.exists(page.rmpath):
             changed_pages.append(i)
         page.render_to_painter(pdf_canvas, vector, template_alpha)
