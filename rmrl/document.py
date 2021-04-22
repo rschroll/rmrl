@@ -23,7 +23,9 @@ from svglib.svglib import svg2rlg
 
 from . import lines, pens
 from .constants import DISPLAY, PDFHEIGHT, PDFWIDTH, PTPERPX, TEMPLATE_PATH
+from .annotation import Annotation, Rect, Point
 
+from typing import List, Tuple
 
 log = logging.getLogger(__name__)
 
@@ -33,6 +35,12 @@ class DocumentPage:
         # Page 0 is the first page!
         self.source = source
         self.num = pagenum
+
+        self.highlights = None
+        highlightspath = f'{{ID}}.highlights/{pid}.json'
+        if source.exists(highlightspath):
+            with source.open(highlightspath, 'r') as f:
+                self.highlights = json.load(f)["highlights"]
 
         # On disk, these files are named by a UUID
         self.rmpath = f'{{ID}}/{pid}.rm'
@@ -71,15 +79,41 @@ class DocumentPage:
         self.load_layers()
 
     def get_grouped_annotations(self):
-        # Return the annotations grouped by proximity. If they are
-        # within a distance of each other, count them as a single
-        # annotation.
-
-        # Annotations should be delivered in an array, where each
-        # index is a tuple (LayerName,
         annotations = []
+        if self.highlights is not None: 
+            annotations.append(("Highlights",[]))
+
+            for h in self.highlights:
+                note = None
+                cursor = -1
+                for stroke in h:
+                    log.debug(stroke)
+                    rect = None
+                    for r in stroke["rects"]: # I guess in theory there could be more than one? 
+                        ll = Point(r["x"], r["y"])
+                        ur = Point(r["x"]+r["width"], r["y"]+r["height"])
+                        if rect: rect = rect.union(Rect(ll,ur))
+                        else: rect = Rect(ll, ur)
+                    
+
+                    contents = stroke["text"] + " "
+                    newnote = Annotation("Highlight", rect, contents=contents)
+
+                    if cursor > 0 and (stroke["start"] - cursor > 10): # sometimes there are small gaps due to whitespace?
+                        # For now, treat non-continuous highlights as separate notes
+                        annotations[0][1].append(note)
+                        note = newnote
+                    else:
+                        note = Annotation.union(note, newnote)
+
+                    cursor = stroke["start"]+stroke["length"]
+                        
+                if note:
+                    annotations[0][1].append(note)
+
         for layer in self.layers:
             annotations.append(layer.get_grouped_annotations())
+
         return annotations
 
     def load_layers(self):
@@ -172,8 +206,8 @@ class DocumentPageLayer:
         # PDF layers are ever implemented.
         self.annot_paths = []
 
-    def get_grouped_annotations(self):
-        # return: (LayerName, [(AnnotType, minX, minY, maxX, maxY)])
+    def get_grouped_annotations(self) -> Tuple[str, list]:
+        # return: (LayerName, [Annotations])
 
         # Compare all the annot_paths to each other. If any overlap,
         # they will be grouped together. This is done recursively.
@@ -181,18 +215,18 @@ class DocumentPageLayer:
             newset = []
 
             for p in pathset:
-                annotype = p[0]
-                path = p[1]
+                annotype = p.annotype
+                #path = p[1] #returns (xmin, ymin, xmax, ymax)
                 did_fit = False
                 for i, g in enumerate(newset):
-                    gannotype = g[0]
-                    group = g[1]
+                    gannotype = g.annotype
+                    #group = g[1]
                     # Only compare annotations of the same type
                     if gannotype != annotype:
                         continue
-                    if path.intersects(group):
+                    if p.intersects(g):
                         did_fit = True
-                        newset[i] = (annotype, group.united(path))
+                        newset[i] = g.united(p) #left off here, need to build united and quadpoints
                         break
                 if did_fit:
                     continue
@@ -207,22 +241,7 @@ class DocumentPageLayer:
                 return newset
 
         grouped = grouping_func(self.annot_paths)
-
-        # Get the bounding rect of each group, which sets the PDF
-        # annotation geometry.
-        annot_rects = []
-        for p in grouped:
-            annotype = p[0]
-            path = p[1]
-            rect = path.boundingRect()
-            annot = (annotype,
-                     float(rect.x()),
-                     float(rect.y()),
-                     float(rect.x() + rect.width()),
-                     float(rect.y() + rect.height()))
-            annot_rects.append(annot)
-
-        return (self.name, annot_rects)
+        return (self.name, grouped)
 
     def paint_strokes(self, canvas, vector):
         for stroke in self.strokes:
