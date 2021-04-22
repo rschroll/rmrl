@@ -26,7 +26,7 @@ from pdfrw import PdfReader, PdfWriter, PageMerge, PdfDict, PdfArray, PdfName, \
 from reportlab.pdfgen import canvas
 
 from . import document, sources
-from .constants import PDFHEIGHT, PDFWIDTH, PTPERPX, SPOOL_MAX
+from .constants import PDFHEIGHT, PDFWIDTH, PTPERPX, SPOOL_MAX, HIGHLIGHTCOLOR
 from typing import Tuple, List
 
 
@@ -90,7 +90,7 @@ def render(source, *,
     # about 500 pages could use up to 3 GB of RAM. Create them by
     # iteration so they get released by garbage collector.
     changed_pages = []
-    annotations = [] # [pages[Annotations]]
+    annotations = [] # [pages[layers[(layer, [Annotations])]]]
     for i in range(0, len(pages)):
         page = document.DocumentPage(source, pages[i], i)
         if source.exists(page.rmpath):
@@ -398,34 +398,37 @@ def invert_coords(point) -> Tuple[float]:
 
 def apply_annotations(rmpage, page_annot, ocgorderinner):
     # page_annot = layers[(layer, [Annotations])]
-    for a in page_annot:
-        # PDF origin is in bottom-left, so invert all
-        # y-coordinates.
-        author = 'reMarkable' #self.model.device_info['rcuname']
+    for k, layer_a in enumerate(page_annot):
+        layerannots = layer_a[1]
+        for a in layerannots:
+            # PDF origin is in bottom-left, so invert all
+            # y-coordinates.
+            author = 'reMarkable' #self.model.device_info['rcuname']
 
-        x1, y1 = invert_coords(a.rect.ll)
-        x2, y2 = invert_coords(a.rect.ur)
+            x1, y1 = invert_coords(a.rect.ll)
+            x2, y2 = invert_coords(a.rect.ur)
 
-        w = x2-x1
-        h = y1-y2
-        qp = [c for p in map(invert_coords, a.quadpoints.points) for c in p]
-        
-        pdf_a = PdfDict(Type=PdfName('Annot'),
-                        Rect=PdfArray([x1, y1, x2, y2]),
-                        QuadPoints=PdfArray(qp),
-                        Contents=a.contents,
-                        T=author,
-                        ANN='pdfmark',
-                        Subtype=PdfName(a.annotype),
-                        P=rmpage)
-        # Set to indirect because it makes a cleaner PDF
-        # output.
-        pdf_a.indirect = True
-        if ocgorderinner:
-            pdf_a.OC = ocgorderinner[k]
-        if not '/Annots' in rmpage:
-            rmpage.Annots = PdfArray()
-        rmpage.Annots.append(pdf_a)
+            w = x2-x1
+            h = y1-y2
+            qp = [c for p in map(invert_coords, a.quadpoints.points) for c in p]
+            
+            pdf_a = PdfDict(Type=PdfName('Annot'),
+                            Rect=PdfArray([x1, y1, x2, y2]),
+                            QuadPoints=PdfArray(qp),
+                            C=PdfArray(HIGHLIGHTCOLOR),
+                            Contents=a.contents,
+                            T=author,
+                            ANN='pdfmark',
+                            Subtype=PdfName(a.annotype),
+                            P=rmpage)
+            # Set to indirect because it makes a cleaner PDF
+            # output.
+            pdf_a.indirect = True
+            if ocgorderinner:
+                pdf_a.OC = ocgorderinner[k]
+            if not '/Annots' in rmpage:
+                rmpage.Annots = PdfArray()
+            rmpage.Annots.append(pdf_a)
 
 
 def merge_pages(basepage, rmpage, changed_page, expand_pages):

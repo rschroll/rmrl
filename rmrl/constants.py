@@ -23,3 +23,4 @@ SPOOL_MAX = 10 * 1024 * 1024
 TEMPLATE_PATH = xdg_data_home() / 'rmrl' / 'templates'
 
 VERSION = pkg_resources.get_distribution('rmrl').version
+HIGHLIGHTCOLOR = [1, 0.941177, 0.4]

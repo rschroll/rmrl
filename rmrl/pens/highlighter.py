@@ -19,9 +19,6 @@ from reportlab.graphics.shapes import Rect
 from reportlab.pdfgen.pathobject import PDFPathObject
 from ..annotation import Annotation, Point, Rect, QuadPoints
 
-# In software version 2.7, reMarkable phased out the highlighter pen in favor
-# of a separate .highlights file. This code is likely obsolete and can be removed
-# once we are confident this change is stable
 class HighlighterPen(GenericPen):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -34,8 +31,8 @@ class HighlighterPen(GenericPen):
         canvas.setLineCap(2)  # Square
         canvas.setLineJoin(1)  # Round
         #canvas.setDash ?? for solid line
-        yellow = (1.000, 0.914, 0.290)
-        canvas.setStrokeColor(yellow, alpha=0.392)
+        white = (1, 1, 1) #color handled by annotation object in PDF
+        canvas.setStrokeColor(white, alpha=0.0)
         canvas.setLineWidth(stroke.width)
 
         path = canvas.beginPath()
