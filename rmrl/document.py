@@ -29,10 +29,11 @@ log = logging.getLogger(__name__)
 
 class DocumentPage:
     # A single page in a document
-    def __init__(self, source, pid, pagenum):
+    def __init__(self, source, pid, pagenum, colors):
         # Page 0 is the first page!
         self.source = source
         self.num = pagenum
+        self.colors = colors
 
         # On disk, these files are named by a UUID
         self.rmpath = f'{{ID}}/{pid}.rm'
@@ -103,7 +104,7 @@ class DocumentPage:
             except:
                 name = 'Layer ' + str(i + 1)
 
-            layer = DocumentPageLayer(self, name=name)
+            layer = DocumentPageLayer(self, name=name, colors=self.colors)
             layer.strokes = layerstrokes
             self.layers.append(layer)
 
@@ -152,17 +153,15 @@ class DocumentPage:
 class DocumentPageLayer:
     pen_widths = []
 
-    def __init__(self, page, name=None):
+    def __init__(self, page, colors, name=None):
         self.page = page
         self.name = name
 
         self.colors = [
-            #QSettings().value('pane/notebooks/export_pdf_blackink'),
-            #QSettings().value('pane/notebooks/export_pdf_grayink'),
-            #QSettings().value('pane/notebooks/export_pdf_whiteink')
-            (0, 0, 0),
-            (0.5, 0.5, 0.5),
-            (1, 1, 1)
+            colors.black.rgb,
+            colors.gray.rgb,
+            colors.white.rgb,
+            colors.highlight.rgb,
         ]
 
         # Set this from the calling func
@@ -232,6 +231,10 @@ class DocumentPageLayer:
             if penclass is None:
                 log.error("Unknown pen code %d" % pen)
                 penclass = pens.GenericPen
+
+            # Hack to get the right color for the highlighter.
+            if penclass == pens.HighlighterPen:
+                color = -1
 
             qpen = penclass(vector=vector,
                             layer=self,

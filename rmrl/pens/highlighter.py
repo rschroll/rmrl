@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from ..constants import HIGHLIGHT_ALPHA
 from .generic import GenericPen
 
 class HighlighterPen(GenericPen):
@@ -28,7 +29,7 @@ class HighlighterPen(GenericPen):
         canvas.setLineCap(2)  # Square
         canvas.setLineJoin(1)  # Round
         #canvas.setDash ?? for solid line
-        canvas.setStrokeColor((1.000, 0.914, 0.290), alpha=0.392)
+        canvas.setStrokeColor(self.color, alpha=HIGHLIGHT_ALPHA)
         canvas.setLineWidth(stroke.width)
 
         path = canvas.beginPath()
