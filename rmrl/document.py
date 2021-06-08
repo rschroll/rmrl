@@ -18,6 +18,8 @@ import gc
 import json
 import logging
 
+from colour import Color
+
 from reportlab.graphics import renderPDF
 from svglib.svglib import svg2rlg
 
@@ -29,7 +31,7 @@ log = logging.getLogger(__name__)
 
 class DocumentPage:
     # A single page in a document
-    def __init__(self, source, pid, pagenum, black=(0, 0, 0), white=(1, 1, 1)):
+    def __init__(self, source, pid, pagenum, black=Color('black'), white=Color('white')):
         # Page 0 is the first page!
         self.source = source
         self.num = pagenum
@@ -154,17 +156,15 @@ class DocumentPage:
 class DocumentPageLayer:
     pen_widths = []
 
-    def __init__(self, page, name=None, black=(0, 0, 0), white=(1, 1, 1)):
+    def __init__(self, page, name=None, black=Color('black'), white=('white')):
         self.page = page
         self.name = name
 
+        gray = list(black.range_to(white, 3))[1]
         self.colors = [
-            #QSettings().value('pane/notebooks/export_pdf_blackink'),
-            #QSettings().value('pane/notebooks/export_pdf_grayink'),
-            #QSettings().value('pane/notebooks/export_pdf_whiteink')
-            black,
-            [(b + w) / 2 for b, w in zip(black, white)],
-            white,
+            black.rgb,
+            gray.rgb,
+            white.rgb,
         ]
 
         # Set this from the calling func

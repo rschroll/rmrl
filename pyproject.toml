@@ -9,6 +9,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.7"
+colour = "^0.1.5"
 pdfrw = "^0.4"
 reportlab = "^3.5.59"
 svglib = "^1.0.1"

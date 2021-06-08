@@ -20,6 +20,8 @@ from pathlib import Path
 import json
 import re
 
+from colour import Color
+
 from pdfrw import PdfReader, PdfWriter, PageMerge, PdfDict, PdfArray, PdfName, \
     IndirectPdfDict, uncompress, compress
 
@@ -36,10 +38,9 @@ def render(source, *,
            expand_pages=True,
            template_alpha=0.3,
            only_annotated=False,
-           black=(0, 0, 0),
-           white=(1, 1, 1)):
-    """
-    Render a source document as a PDF file.
+           black=Color('black'),
+           white=Color('white')):
+    """Render a source document as a PDF file.
 
     source: The reMarkable document to be rendered.  This may be
               - A filename or pathlib.Path to a zip file containing the
@@ -61,10 +62,10 @@ def render(source, *,
                     makes the templates invisible, 1 makes them fully dark.
     only_annotated: Boolean value (default False) indicating whether only
                     pages with annotations should be output.
-    black: A tuple of three values (red, green, and blue; 0.0-1.0) giving
-           the color to use as "black" in the document.  Default: (0, 0, 0)
-    white: A tuple of three values (red, green, and blue; 0.0-1.0) giving
-            the color to use as "white" in the document.  Default: (1, 1, 1)
+    black: A colour.Color object giving the color to use as "black" in the
+           document.  Default: Color('black')
+    white: A colour.Color object giving the color to use as "white" in the
+           document.  Default: Color('white')
     """
 
     vector=True  # TODO: Different rendering styles

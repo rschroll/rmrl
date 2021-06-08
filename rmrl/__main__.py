@@ -19,6 +19,8 @@ import re
 import sys
 import zipfile
 
+from colour import Color
+
 from . import render
 from .constants import VERSION
 from .sources import ZipSource
@@ -60,10 +62,7 @@ def main():
     return 0
 
 def parse_color(hex_string):
-    color_int = int(hex_string[1:], 16)
-    return (color_int // 65536 / 255,
-            color_int // 256 % 256 / 255,
-            color_int % 256 / 255)
+    return Color(hex_string)
     
 if __name__ == '__main__':
     sys.exit(main())
