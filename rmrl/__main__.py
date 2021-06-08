@@ -15,7 +15,6 @@
 
 import argparse
 import io
-import re
 import sys
 import zipfile
 
