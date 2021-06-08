@@ -30,8 +30,8 @@ def main():
     parser.add_argument('--alpha', default=0.3, help="Opacity for template background (0 for no background).")
     parser.add_argument('--no-expand', action='store_true', help="Don't expand pages to margins on device.")
     parser.add_argument('--only-annotated', action='store_true', help="Only render pages with annotations.")
-    parser.add_argument('--black', default='#000000', help="Color for \"black\" pen, in hex notation (#RRGGBB).")
-    parser.add_argument('--white', default='#FFFFFF', help="Color for \"white\" pen, in hex notation (#RRGGBB).")
+    parser.add_argument('--black', default='#000000', help='Color for "black" pen, in hex notation (#RRGGBB).')
+    parser.add_argument('--white', default='#FFFFFF', help='Color for "white" pen, in hex notation (#RRGGBB).')
     parser.add_argument('--version', action='version', version=VERSION)
     args = parser.parse_args()
 
