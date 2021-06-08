@@ -23,6 +23,7 @@ from colour import Color
 
 from . import render
 from .constants import VERSION
+from .render import InvalidColor
 from .sources import ZipSource
 
 def main():
@@ -32,15 +33,10 @@ def main():
     parser.add_argument('--alpha', default=0.3, help="Opacity for template background (0 for no background).")
     parser.add_argument('--no-expand', action='store_true', help="Don't expand pages to margins on device.")
     parser.add_argument('--only-annotated', action='store_true', help="Only render pages with annotations.")
-    parser.add_argument('--black', default='#000000', help='Color for "black" pen, in hex notation (#RRGGBB).')
-    parser.add_argument('--white', default='#FFFFFF', help='Color for "white" pen, in hex notation (#RRGGBB).')
+    parser.add_argument('--black', default='black', help='Color for "black" pen.')
+    parser.add_argument('--white', default='white', help='Color for "white" pen.')
     parser.add_argument('--version', action='version', version=VERSION)
     args = parser.parse_args()
-
-    for color, value in [('White', args.white), ('Black', args.black)]:
-        if re.search(r'^#[0-9a-f]{6}$', value, re.I) is None:
-            print("{} color is incorrectly formatted.".format(color), file=sys.stderr)
-            return 1
 
     source = args.input
     if source == '-':
@@ -51,15 +47,19 @@ def main():
     else:
         fout = sys.stdout.buffer
 
-    stream = render(source,
-                    template_alpha=float(args.alpha),
-                    expand_pages=not args.no_expand,
-                    only_annotated=args.only_annotated,
-                    black=args.black,
-                    white=args.white)
-    fout.write(stream.read())
-    fout.close()
-    return 0
+    try:
+        stream = render(source,
+                        template_alpha=float(args.alpha),
+                        expand_pages=not args.no_expand,
+                        only_annotated=args.only_annotated,
+                        black=args.black,
+                        white=args.white)
+        fout.write(stream.read())
+        fout.close()
+        return 0
+    except InvalidColor as e:
+        print(str(e), file=sys.stderr)
+        return 1
 
 if __name__ == '__main__':
     sys.exit(main())

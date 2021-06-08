@@ -36,6 +36,11 @@ log = logging.getLogger(__name__)
 
 Colors = namedtuple('Colors', ['black', 'white', 'gray'])
 
+class InvalidColor(Exception):
+    """Raised when an invalid string is passed as a color."""
+    pass
+
+
 def render(source, *,
            progress_cb=lambda x: None,
            expand_pages=True,
@@ -191,10 +196,17 @@ def render(source, *,
 
 
 def parse_colors(black, white):
-    black_color = Color(black)
-    white_color = Color(white)
+    black_color = parse_color(black, 'black')
+    white_color = parse_color(white, 'white')
     gray_color = list(black_color.range_to(white_color, 3))[1]
     return Colors(black=black_color, white=white_color, gray=gray_color)
+
+
+def parse_color(color_string, name):
+    try:
+        return Color(color_string)
+    except Exception as e:
+        raise InvalidColor('"{}" color was passed an invalid string: {}'.format(name, str(e)))
 
 
 def do_apply_ocg(basepage, rmpage, i, uses_base_pdf, ocgprop, annotations):
