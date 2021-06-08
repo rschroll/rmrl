@@ -27,7 +27,8 @@ from .render import InvalidColor
 from .sources import ZipSource
 
 def main():
-    parser = argparse.ArgumentParser(description="Render a PDF file from a Remarkable document.")
+    parser = argparse.ArgumentParser(description="Render a PDF file from a Remarkable document.",
+                                     epilog='The colors may be specified as hex strings ("#AABBCC", "#ABC") or well-known names ("black", "red").  If no gray color is given, the program will use an average of the white and black colors.  A fixed amount of transparency will be applied to the color given for the highlighter.')
     parser.add_argument('input', help="Filename of zip file, or root-level unpacked file of document.  Use '-' to read zip file from stdin.")
     parser.add_argument('output', nargs='?', default='', help="Filename where PDF file should be written.  Omit to write to stdout.")
     parser.add_argument('--alpha', default=0.3, help="Opacity for template background (0 for no background).")
