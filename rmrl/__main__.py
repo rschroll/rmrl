@@ -18,8 +18,6 @@ import io
 import sys
 import zipfile
 
-from colour import Color
-
 from . import render
 from .constants import VERSION, HIGHLIGHT_DEFAULT_COLOR
 from .render import InvalidColor
