@@ -29,12 +29,12 @@ from pdfrw import PdfReader, PdfWriter, PageMerge, PdfDict, PdfArray, PdfName, \
 from reportlab.pdfgen import canvas
 
 from . import document, sources
-from .constants import PDFHEIGHT, PDFWIDTH, PTPERPX, SPOOL_MAX
+from .constants import PDFHEIGHT, PDFWIDTH, PTPERPX, SPOOL_MAX, HIGHLIGHT_DEFAULT_COLOR
 
 
 log = logging.getLogger(__name__)
 
-Colors = namedtuple('Colors', ['black', 'white', 'gray'])
+Colors = namedtuple('Colors', ['black', 'white', 'gray', 'highlight'])
 
 class InvalidColor(Exception):
     """Raised when an invalid string is passed as a color."""
@@ -48,7 +48,8 @@ def render(source, *,
            only_annotated=False,
            black='black',
            white='white',
-           gray=None):
+           gray=None,
+           highlight=HIGHLIGHT_DEFAULT_COLOR):
     """Render a source document as a PDF file.
 
     source: The reMarkable document to be rendered.  This may be
@@ -78,9 +79,11 @@ def render(source, *,
     gray: A string giving the color to use as "gray" in the document.
           See `black` parameter for format.  Default: None, which means to
           pick an average between the "white" and "black" values.
+    highlight: A string giving the color to use for the highlighter.
+               See `black` parameter for format.
     """
 
-    colors = parse_colors(black, white, gray)
+    colors = parse_colors(black, white, gray, highlight)
     
     vector=True  # TODO: Different rendering styles
     source = sources.get_source(source)
@@ -198,9 +201,10 @@ def render(source, *,
     return stream
 
 
-def parse_colors(black, white, gray):
+def parse_colors(black, white, gray, highlight):
     black_color = parse_color(black, 'black')
     white_color = parse_color(white, 'white')
+    highlight_color = parse_color(highlight, 'highlight')
 
     if gray is not None:
         # Use the explicit gray value.
@@ -216,7 +220,7 @@ def parse_colors(black, white, gray):
         # Color.range_to, which more or less averages in HSL space.
         gray_color = list(black_color.range_to(white_color, 3))[1]
 
-    return Colors(black=black_color, white=white_color, gray=gray_color)
+    return Colors(black=black_color, white=white_color, gray=gray_color, highlight=highlight_color)
 
 
 def parse_color(color_string, name):

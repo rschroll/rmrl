@@ -161,6 +161,7 @@ class DocumentPageLayer:
             colors.black.rgb,
             colors.gray.rgb,
             colors.white.rgb,
+            colors.highlight.rgb,
         ]
 
         # Set this from the calling func
@@ -230,6 +231,10 @@ class DocumentPageLayer:
             if penclass is None:
                 log.error("Unknown pen code %d" % pen)
                 penclass = pens.GenericPen
+
+            # Hack to get the right color for the highlighter.
+            if penclass == pens.HighlighterPen:
+                color = -1
 
             qpen = penclass(vector=vector,
                             layer=self,

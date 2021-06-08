@@ -22,7 +22,7 @@ import zipfile
 from colour import Color
 
 from . import render
-from .constants import VERSION
+from .constants import VERSION, HIGHLIGHT_DEFAULT_COLOR
 from .render import InvalidColor
 from .sources import ZipSource
 
@@ -36,6 +36,7 @@ def main():
     parser.add_argument('--black', default='black', help='Color for "black" pen.')
     parser.add_argument('--white', default='white', help='Color for "white" pen.')
     parser.add_argument('--gray', '--grey', default=None, help='Color for "gray" pen.')
+    parser.add_argument('--highlight', '--hilight', '--hl', default=HIGHLIGHT_DEFAULT_COLOR, help='Color for the highlighter.')
     parser.add_argument('--version', action='version', version=VERSION)
     args = parser.parse_args()
 
@@ -55,7 +56,8 @@ def main():
                         only_annotated=args.only_annotated,
                         black=args.black,
                         white=args.white,
-                        gray=args.gray)
+                        gray=args.gray,
+                        highlight=args.highlight)
         fout.write(stream.read())
         fout.close()
         return 0
