@@ -18,8 +18,6 @@ import gc
 import json
 import logging
 
-from colour import Color
-
 from reportlab.graphics import renderPDF
 from svglib.svglib import svg2rlg
 
@@ -31,12 +29,11 @@ log = logging.getLogger(__name__)
 
 class DocumentPage:
     # A single page in a document
-    def __init__(self, source, pid, pagenum, black=Color('black'), white=Color('white')):
+    def __init__(self, source, pid, pagenum, colors):
         # Page 0 is the first page!
         self.source = source
         self.num = pagenum
-        self.black = black
-        self.white = white
+        self.colors = colors
 
         # On disk, these files are named by a UUID
         self.rmpath = f'{{ID}}/{pid}.rm'
@@ -107,7 +104,7 @@ class DocumentPage:
             except:
                 name = 'Layer ' + str(i + 1)
 
-            layer = DocumentPageLayer(self, name=name, black=self.black, white=self.white)
+            layer = DocumentPageLayer(self, name=name, colors=self.colors)
             layer.strokes = layerstrokes
             self.layers.append(layer)
 
@@ -156,15 +153,14 @@ class DocumentPage:
 class DocumentPageLayer:
     pen_widths = []
 
-    def __init__(self, page, name=None, black=Color('black'), white=('white')):
+    def __init__(self, page, colors, name=None):
         self.page = page
         self.name = name
 
-        gray = list(black.range_to(white, 3))[1]
         self.colors = [
-            black.rgb,
-            gray.rgb,
-            white.rgb,
+            colors.black.rgb,
+            colors.gray.rgb,
+            colors.white.rgb,
         ]
 
         # Set this from the calling func

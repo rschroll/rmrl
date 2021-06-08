@@ -19,6 +19,7 @@ import tempfile
 from pathlib import Path
 import json
 import re
+from collections import namedtuple
 
 from colour import Color
 
@@ -33,13 +34,15 @@ from .constants import PDFHEIGHT, PDFWIDTH, PTPERPX, SPOOL_MAX
 
 log = logging.getLogger(__name__)
 
+Colors = namedtuple('Colors', ['black', 'white', 'gray'])
+
 def render(source, *,
            progress_cb=lambda x: None,
            expand_pages=True,
            template_alpha=0.3,
            only_annotated=False,
-           black=Color('black'),
-           white=Color('white')):
+           black='black',
+           white='white'):
     """Render a source document as a PDF file.
 
     source: The reMarkable document to be rendered.  This may be
@@ -62,12 +65,15 @@ def render(source, *,
                     makes the templates invisible, 1 makes them fully dark.
     only_annotated: Boolean value (default False) indicating whether only
                     pages with annotations should be output.
-    black: A colour.Color object giving the color to use as "black" in the
-           document.  Default: Color('black')
-    white: A colour.Color object giving the color to use as "white" in the
-           document.  Default: Color('white')
+    black: A string giving the color to use as "black" in the document.
+           Can be a color name or a hex string.  Default: 'black'
+    white: A string giving the color to use as "white" in the document.
+           See `black` parameter for format.  Default: 'white'
     """
 
+    # TODO: Error handling
+    colors = parse_colors(black, white)
+    
     vector=True  # TODO: Different rendering styles
     source = sources.get_source(source)
 
@@ -96,7 +102,7 @@ def render(source, *,
     changed_pages = []
     annotations = []
     for i in range(0, len(pages)):
-        page = document.DocumentPage(source, pages[i], i, black=black, white=white)
+        page = document.DocumentPage(source, pages[i], i, colors=colors)
         if source.exists(page.rmpath):
             changed_pages.append(i)
         page.render_to_painter(pdf_canvas, vector, template_alpha)
@@ -182,6 +188,13 @@ def render(source, *,
 
     log.info('exported pdf')
     return stream
+
+
+def parse_colors(black, white):
+    black_color = Color(black)
+    white_color = Color(white)
+    gray_color = list(black_color.range_to(white_color, 3))[1]
+    return Colors(black=black_color, white=white_color, gray=gray_color)
 
 
 def do_apply_ocg(basepage, rmpage, i, uses_base_pdf, ocgprop, annotations):

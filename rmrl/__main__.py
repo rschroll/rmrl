@@ -55,14 +55,11 @@ def main():
                     template_alpha=float(args.alpha),
                     expand_pages=not args.no_expand,
                     only_annotated=args.only_annotated,
-                    black=parse_color(args.black),
-                    white=parse_color(args.white))
+                    black=args.black,
+                    white=args.white)
     fout.write(stream.read())
     fout.close()
     return 0
 
-def parse_color(hex_string):
-    return Color(hex_string)
-    
 if __name__ == '__main__':
     sys.exit(main())
