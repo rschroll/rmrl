@@ -47,7 +47,8 @@ def render(source, *,
            template_alpha=0.3,
            only_annotated=False,
            black='black',
-           white='white'):
+           white='white',
+           gray=None):
     """Render a source document as a PDF file.
 
     source: The reMarkable document to be rendered.  This may be
@@ -74,10 +75,12 @@ def render(source, *,
            Can be a color name or a hex string.  Default: 'black'
     white: A string giving the color to use as "white" in the document.
            See `black` parameter for format.  Default: 'white'
+    gray: A string giving the color to use as "gray" in the document.
+          See `black` parameter for format.  Default: None, which means to
+          pick an average between the "white" and "black" values.
     """
 
-    # TODO: Error handling
-    colors = parse_colors(black, white)
+    colors = parse_colors(black, white, gray)
     
     vector=True  # TODO: Different rendering styles
     source = sources.get_source(source)
@@ -195,10 +198,24 @@ def render(source, *,
     return stream
 
 
-def parse_colors(black, white):
+def parse_colors(black, white, gray):
     black_color = parse_color(black, 'black')
     white_color = parse_color(white, 'white')
-    gray_color = list(black_color.range_to(white_color, 3))[1]
+
+    if gray is not None:
+        # Use the explicit gray value.
+        gray_color = parse_color(gray, 'gray')
+    elif black_color.saturation == 0 or white_color.saturation == 0:
+        # One or the other of the color endpoints is a shade of gray (or
+        # white or black).  Use average in RGB space.  This keeps the hue
+        # from the saturated endpoint and just lets the other endpoint
+        # either darken or lighten it.
+        gray_color = Color(rgb=((b + w) / 2 for b, w in zip(black_color.rgb, white_color.rgb)))
+    else:
+        # Both "black" and "white" have color elements to them.  Use
+        # Color.range_to, which more or less averages in HSL space.
+        gray_color = list(black_color.range_to(white_color, 3))[1]
+
     return Colors(black=black_color, white=white_color, gray=gray_color)
 
 

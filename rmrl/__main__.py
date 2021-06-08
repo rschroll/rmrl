@@ -35,6 +35,7 @@ def main():
     parser.add_argument('--only-annotated', action='store_true', help="Only render pages with annotations.")
     parser.add_argument('--black', default='black', help='Color for "black" pen.')
     parser.add_argument('--white', default='white', help='Color for "white" pen.')
+    parser.add_argument('--gray', '--grey', default=None, help='Color for "gray" pen.')
     parser.add_argument('--version', action='version', version=VERSION)
     args = parser.parse_args()
 
@@ -53,7 +54,8 @@ def main():
                         expand_pages=not args.no_expand,
                         only_annotated=args.only_annotated,
                         black=args.black,
-                        white=args.white)
+                        white=args.white,
+                        gray=args.gray)
         fout.write(stream.read())
         fout.close()
         return 0
