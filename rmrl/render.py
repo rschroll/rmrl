@@ -445,6 +445,10 @@ def merge_pages(basepage, rmpage, changed_page, expand_pages):
     if not box_data and hasattr(basepage.Parent,'Parent'):
         box_data = basepage.Parent.Parent.MediaBox
 
+    # If we still can't find it, raise an exception that describes the problem
+    if not box_data:
+        raise TypeError("Could not find the dimensions of the base PDF page.")
+
     bpage_box = list(map(float, box_data))
 
     # Fix any malformed PDF that has a CropBox extending outside of
