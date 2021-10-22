@@ -439,9 +439,8 @@ def merge_pages(basepage, rmpage, changed_page, expand_pages):
     # MediaBox, so one must be taken from the parent. The
     # rM adds a bit to the width AND the height on this
     # file.
-    bpage_box = list(map(float, basepage.CropBox
-                                or basepage.MediaBox
-                                or basepage.Parent.MediaBox))
+    bpage_box = list(map(float, basepage.inheritable.CropBox
+                                or basepage.inheritable.MediaBox))
 
     # Fix any malformed PDF that has a CropBox extending outside of
     # the MediaBox, by limiting the area to the intersection.
